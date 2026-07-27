@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bookmark-shelf — File Sync</title>
+<style>
+  :root {
+    --ivory: #F5F1E6;
+    --card: #FFFDF6;
+    --ink: #1B3538;
+    --ink-soft: #3E5457;
+    --amber: #E3A73F;
+    --amber-ink: #5A3B0C;
+    --wine: #7A2E36;
+    --sage: #B7C4B4;
+    --shadow: rgba(27, 53, 56, 0.16);
+
+    --font-display: "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+
+  a { color: var(--ink-soft); }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--amber);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- ヘッダー ---------- */
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 18px 24px;
+    background: var(--ink);
+    color: var(--ivory);
+  }
+
+  .brand {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+  }
+
+  .brand-mark {
+    color: var(--amber);
+    font-size: 1.3rem;
+  }
+
+  .search-slot {
+    flex: 1 1 260px;
+    position: relative;
+    min-width: 200px;
+  }
+
+  .search-slot input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: none;
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.92rem;
+  }
+
+  .search-slot input::placeholder { color: var(--ink-soft); opacity: 0.7; }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .file-status {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ivory);
+    opacity: 0.85;
+    white-space: nowrap;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  .btn-amber {
+    background: var(--amber);
+    color: var(--amber-ink);
+  }
+  .btn-amber:hover { background: #eeb857; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--ivory);
+    border: 1px solid rgba(245, 241, 230, 0.4);
+  }
+  .btn-ghost:hover { border-color: var(--ivory); }
+  .btn-ghost.active {
+    background: var(--amber);
+    color: var(--amber-ink);
+    border-color: var(--amber);
+  }
+  .btn-ghost:disabled, .btn-amber:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 6px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .btn-outline:hover { background: var(--ink); color: var(--ivory); }
+
+  .btn-quiet {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--sage);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .btn-quiet:hover { border-color: var(--ink); color: var(--ink); }
+  .btn-quiet:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--wine);
+    border: 1px solid var(--wine);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+  .btn-danger:hover { background: var(--wine); color: var(--ivory); }
+
+  /* ---------- 接続画面・非対応画面 ---------- */
+
+  .full-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 64px);
+    padding: 40px 24px;
+  }
+  .full-message[hidden] { display: none; }
+
+  .full-message-card {
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    background: var(--card);
+    border: 1px solid var(--sage);
+    border-radius: 10px;
+    padding: 32px;
+  }
+
+  .full-message-card h2 {
+    font-family: var(--font-display);
+    margin: 0 0 12px;
+  }
+
+  .full-message-card p {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    margin: 0 0 16px;
+    line-height: 1.6;
+  }
+
+  .full-message-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .reconnect-row {
+    margin-bottom: 20px;
+    padding: 14px;
+    border: 1px dashed var(--amber);
+    border-radius: 6px;
+    background: rgba(227, 167, 63, 0.08);
+  }
+  .reconnect-row[hidden] { display: none; }
+  .reconnect-row p { margin: 0 0 10px; font-size: 0.85rem; }
+
+  /* ---------- 追加フォーム ---------- */
+
+  .add-panel {
+    background: var(--card);
+    border-bottom: 1px solid var(--sage);
+    padding: 18px 24px;
+  }
+  .add-panel[hidden] { display: none; }
+
+  .add-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+    max-width: 1100px;
+  }
+
+  .field label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+
+  .field input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--sage);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  .add-panel .hint {
+    grid-column: 1 / -1;
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+  }
+
+  .add-row-2 {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    max-width: 1100px;
+  }
+  .add-row-2 .field { flex: 1 1 160px; }
+  .add-row-2 .field.memo-field { flex: 2 1 260px; }
+
+  .field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--sage);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 38px;
+    background: #fff;
+    color: var(--ink);
+  }
+
+  .password-input-row { display: flex; gap: 6px; }
+  .password-input-row input { flex: 1; }
+
+  .warn-hint {
+    font-size: 0.68rem;
+    color: var(--wine);
+    margin: 4px 0 0;
+  }
+
+  /* ---------- 選択バー ---------- */
+
+  .selection-bar {
+    background: var(--amber);
+    color: var(--amber-ink);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .selection-bar[hidden] { display: none; }
+
+  .selection-bar .count {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .selection-bar input {
+    padding: 7px 10px;
+    border: 1px solid var(--amber-ink);
+    border-radius: 4px;
+    font-size: 0.85rem;
+    min-width: 160px;
+  }
+
+  .selection-bar .btn-quiet {
+    background: transparent;
+    border-color: var(--amber-ink);
+    color: var(--amber-ink);
+  }
+  .selection-bar .btn-quiet:hover { background: rgba(90, 59, 12, 0.12); }
+
+  /* ---------- レイアウト ---------- */
+
+  .layout {
+    display: flex;
+    align-items: flex-start;
+    min-height: calc(100vh - 64px);
+  }
+  .layout[hidden] { display: none; }
+
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--ink);
+    color: var(--ivory);
+    padding: 20px 16px 40px;
+    min-height: 100%;
+  }
+
+  .sidebar h2 {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--amber);
+    margin: 20px 0 8px;
+  }
+  .sidebar h2:first-child { margin-top: 0; }
+
+  .sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .sidebar li button {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--ivory);
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    padding: 6px 8px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .sidebar li button:hover { background: rgba(245, 241, 230, 0.08); }
+  .sidebar li button.active {
+    background: var(--amber);
+    color: var(--amber-ink);
+    font-weight: 700;
+  }
+  .sidebar li button .count {
+    opacity: 0.7;
+    font-size: 0.78rem;
+  }
+  .sidebar li button.active .count { opacity: 0.85; }
+
+  .sort-row {
+    margin-top: 24px;
+  }
+  .sort-row label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .sort-row select {
+    width: 100%;
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    border-radius: 4px;
+    border: 1px solid var(--ink-soft);
+    background: var(--ivory);
+    color: var(--ink);
+  }
+
+  .main {
+    flex: 1;
+    padding: 24px;
+    min-width: 0;
+  }
+
+  .result-count {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+  }
+
+  /* ---------- グループ区画(常設・背景付き) ---------- */
+
+  .group-section {
+    background: rgba(27, 53, 56, 0.045);
+    border: 1px solid var(--sage);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .group-section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .group-section-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  .group-section-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+  }
+
+  .group-section-empty {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    padding: 18px;
+    text-align: center;
+    border: 1px dashed var(--sage);
+    border-radius: 6px;
+  }
+
+  .group-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  /* ---------- カード ---------- */
+
+  .card {
+    display: flex;
+    background: var(--card);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px var(--shadow);
+    overflow: hidden;
+  }
+
+  .card-stub {
+    width: 26px;
+    flex-shrink: 0;
+    background: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    position: relative;
+    cursor: grab;
+  }
+
+  .card-stub:active { cursor: grabbing; }
+
+  /* 縁の薄い帯にだけ丸い切れ込み模様を描き、本文と重ならないようにする */
+  .card-stub::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 7px;
+    background-image: radial-gradient(circle, var(--ivory) 2.2px, transparent 2.5px);
+    background-size: 100% 14px;
+    background-repeat: repeat-y;
+    background-position: center 7px;
+  }
+
+  .stub-grip {
+    color: var(--amber);
+    font-size: 0.95rem;
+    line-height: 1;
+    opacity: 0.75;
+  }
+
+  .card.dragging { opacity: 0.45; }
+  .card.drop-before { box-shadow: 0 -3px 0 var(--amber), 0 2px 8px var(--shadow); }
+  .card.drop-after { box-shadow: 0 3px 0 var(--amber), 0 2px 8px var(--shadow); }
+  .group-section.drag-target { border-color: var(--amber); border-style: dashed; }
+
+  .card-body {
+    flex: 1;
+    padding: 12px 14px 12px 16px;
+    min-width: 0;
+    position: relative;
+  }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .card-select {
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    margin-top: 5px;
+    cursor: pointer;
+  }
+
+  .seal {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid var(--sage);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transform: rotate(-6deg);
+    overflow: hidden;
+  }
+  .seal img, .seal svg { width: 16px; height: 16px; }
+
+  .card-title-wrap { min-width: 0; flex: 1; }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    margin: 0 0 2px;
+    overflow-wrap: anywhere;
+  }
+  .card-title a { color: var(--ink); text-decoration: none; }
+  .card-title a:hover { text-decoration: underline; }
+
+  .card-url {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    overflow-wrap: anywhere;
+    margin: 0;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 10px 0 4px;
+  }
+
+  .tag-stamp {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--wine);
+    border: 1px solid var(--wine);
+    border-radius: 2px;
+    padding: 1px 7px;
+    background: transparent;
+  }
+  .tag-stamp.clickable { cursor: pointer; }
+  .tag-stamp:nth-of-type(odd) { transform: rotate(-1.4deg); }
+  .tag-stamp:nth-of-type(even) { transform: rotate(1.2deg); }
+  .tag-stamp.active { background: var(--wine); color: var(--ivory); }
+
+  .card-credentials {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0 4px;
+  }
+
+  .cred-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .cred-label {
+    color: var(--ink-soft);
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    width: 24px;
+    flex-shrink: 0;
+  }
+
+  .cred-value {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .card-memo {
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    margin: 8px 0 0;
+    padding: 8px 10px;
+    background: rgba(27, 53, 56, 0.04);
+    border-radius: 4px;
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin-top: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  /* ---------- 編集フォーム(カード内) ---------- */
+
+  .edit-form { display: grid; gap: 8px; width: 100%; }
+  .edit-form .field input { padding: 6px 8px; }
+  .edit-form-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+  footer.data-controls {
+    padding: 14px 24px 30px;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 760px) {
+    .layout { flex-direction: column; }
+    .sidebar { width: 100%; min-height: auto; }
+    .add-grid { grid-template-columns: 1fr 1fr; }
+    .add-grid > .field:nth-child(1) { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="brand"><span class="brand-mark">&#10022;</span>bookmark-shelf</div>
+  <div class="search-slot">
+    <input id="search-input" type="text" placeholder="タイトル・URL・タグで検索..." aria-label="ブックマークを検索">
+  </div>
+  <div class="header-actions">
+    <span class="file-status" id="file-status">未接続</span>
+    <button class="btn-quiet" id="disconnect-btn" type="button" hidden>切断</button>
+    <button class="btn btn-amber" id="toggle-add-btn" type="button" disabled>+ 追加</button>
+    <button class="btn btn-ghost" id="toggle-select-btn" type="button" disabled>選択</button>
+    <button class="btn btn-ghost" id="export-btn" type="button" disabled>エクスポート</button>
+    <button class="btn btn-ghost" id="import-btn" type="button" disabled>インポート</button>
+    <input type="file" id="import-file" accept="application/json,.json" hidden>
+  </div>
+</header>
+
+<div class="full-message" id="unsupported-screen" hidden>
+  <div class="full-message-card">
+    <h2>このブラウザは対応していません</h2>
+    <p>このツールはFile System Access API(<code>showOpenFilePicker</code>)を使用してJSONファイルに直接読み書きします。現時点ではGoogle ChromeまたはMicrosoft Edgeでのみ動作します。それらのブラウザでこのファイルを開き直してください。</p>
+  </div>
+</div>
+
+<div class="full-message" id="connect-screen" hidden>
+  <div class="full-message-card">
+    <h2>ブックマークファイルに接続</h2>
+    <p id="connect-message">ブックマークを保存するJSONファイルを開くか、新しく作成してください。以降の追加・編集はこのファイルに自動保存されます。</p>
+    <div class="reconnect-row" id="reconnect-row" hidden>
+      <p>前回接続していたファイル「<strong id="reconnect-filename"></strong>」に再接続するには許可が必要です。</p>
+      <button class="btn btn-amber" id="reconnect-btn" type="button">再接続する</button>
+    </div>
+    <div class="full-message-actions">
+      <button class="btn btn-amber" id="open-file-btn" type="button">ファイルを開く</button>
+      <button class="btn-outline" id="create-file-btn" type="button">新規作成</button>
+    </div>
+  </div>
+</div>
+
+<section class="selection-bar" id="selection-bar" hidden>
+  <span class="count" id="selection-count"></span>
+  <input type="text" id="group-name-input" list="group-list" placeholder="グループ名">
+  <button class="btn btn-amber" id="group-assign-btn" type="button">グループにまとめる</button>
+  <button class="btn-quiet" id="group-clear-btn" type="button">グループ解除</button>
+  <button class="btn-quiet" id="selection-clear-btn" type="button">選択解除</button>
+</section>
+
+<section class="add-panel" id="add-panel" hidden>
+  <form id="add-form" class="add-grid">
+    <div class="field">
+      <label for="new-url">URL</label>
+      <input id="new-url" type="text" placeholder="https://example.com または file:///path/to/file" required>
+    </div>
+    <div class="field">
+      <label for="new-title">タイトル</label>
+      <input id="new-title" type="text" placeholder="表示タイトル" required>
+    </div>
+    <div class="field">
+      <label for="new-tags">タグ(カンマ区切り)</label>
+      <input id="new-tags" type="text" placeholder="design, reference">
+    </div>
+    <div class="field">
+      <label for="new-group">グループ</label>
+      <input id="new-group" type="text" list="group-list" placeholder="仕事">
+      <datalist id="group-list"></datalist>
+    </div>
+    <div class="field">
+      <button class="btn btn-amber" type="submit">保存</button>
+    </div>
+    <p class="hint">URLは http:// / https:// / file:/// のいずれかで始まる必要があります。</p>
+  </form>
+  <div class="add-row-2">
+    <div class="field">
+      <label for="new-login-id">ログインID</label>
+      <input id="new-login-id" form="add-form" type="text" placeholder="user@example.com">
+    </div>
+    <div class="field">
+      <label for="new-login-password">パスワード</label>
+      <div class="password-input-row">
+        <input id="new-login-password" form="add-form" type="password" placeholder="パスワード">
+        <button type="button" class="btn-quiet" data-action="toggle-password-visibility" data-target="new-login-password">表示</button>
+      </div>
+      <p class="warn-hint">※ パスワードは平文で保存されます</p>
+    </div>
+    <div class="field memo-field">
+      <label for="new-memo">メモ</label>
+      <textarea id="new-memo" form="add-form" placeholder="メモ"></textarea>
+    </div>
+  </div>
+</section>
+
+<div class="layout" id="layout" hidden>
+  <aside class="sidebar">
+    <h2>タグ</h2>
+    <ul id="tag-nav"></ul>
+
+    <div class="sort-row">
+      <label for="sort-select">並べ替え</label>
+      <select id="sort-select">
+        <option value="manual">手動(ドラッグで並べ替え)</option>
+        <option value="title-asc">タイトル(昇順)</option>
+        <option value="title-desc">タイトル(降順)</option>
+      </select>
+    </div>
+  </aside>
+
+  <main class="main">
+    <p class="result-count" id="result-count"></p>
+    <div id="group-sections"></div>
+  </main>
+</div>
+
+<footer class="data-controls">
+  <span>データは接続したJSONファイルに直接保存されます(Chrome/Edge限定・File System Access API使用)。</span>
+</footer>
+
+<template id="icon-file">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2h9l5 5v15H6V2z" stroke="#3E5457" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 2v5h5" stroke="#3E5457" stroke-width="1.5" stroke-linejoin="round"/></svg>
+</template>
+
+<template id="icon-globe">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#3E5457" stroke-width="1.5"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" stroke="#3E5457" stroke-width="1.2"/></svg>
+</template>
+
+<script>
+(function () {
+  'use strict';
+
+  var UNGROUPED = null; // 未分類(グループ未割り当て)を表す内部値
+
+  var state = {
+    search: '',
+    tag: null,
+    sort: 'manual',
+    editingId: null,
+    selectMode: false,
+    selectedIds: new Set()
+  };
+
+  var bookmarks = [];
+  var fileHandle = null;
+
+  /* ---------- IndexedDB(選択したファイルハンドルの記憶) ---------- */
+
+  var IDB_NAME = 'bookmarks-filesync';
+  var IDB_STORE = 'handles';
+  var IDB_KEY = 'bookmarksFile';
+
+  function idbOpen() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore(IDB_STORE); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function idbGetHandle() {
+    return idbOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(IDB_STORE, 'readonly');
+        var req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+        req.onsuccess = function () { resolve(req.result || null); };
+        req.onerror = function () { reject(req.error); };
+      });
+    });
+  }
+
+  function idbSetHandle(handle) {
+    return idbOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).put(handle, IDB_KEY);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  function idbClearHandle() {
+    return idbOpen().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(IDB_STORE, 'readwrite');
+        tx.objectStore(IDB_STORE).delete(IDB_KEY);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    });
+  }
+
+  /* ---------- データ層(接続したファイルへ直接読み書き) ---------- */
+
+  // 連続操作(連続編集・連続ドラッグ&ドロップ等)でcreateWritable()が多重に走ると
+  // 同一ファイルへの書き込みが競合するため、Promiseチェーンで直列化する
+  var saveChain = Promise.resolve();
+
+  function saveData(data) {
+    if (!fileHandle) return;
+    var payload = JSON.stringify(data, null, 2);
+    var handle = fileHandle;
+    saveChain = saveChain.then(function () {
+      return handle.createWritable();
+    }).then(function (writable) {
+      return writable.write(payload).then(function () { return writable.close(); });
+    }).catch(function (e) {
+      alert('ファイルへの保存に失敗しました。再接続してください。(' + (e && e.message ? e.message : e) + ')');
+    });
+  }
+
+  // ファイルの中身を読み、通常の追加フォームと同じ検証(sanitizeBookmark)を通してから採用する。
+  // 不正なURLで除外された件数も呼び出し元に返す(インポート時と同様に無言で間引かないため)
+  function readBookmarksFromHandle(handle) {
+    return handle.getFile().then(function (file) { return file.text(); }).then(function (text) {
+      if (!text.trim()) return { data: [], skipped: 0 }; // 新規作成直後の空ファイル
+      var parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch (e) {
+        throw new Error('ファイルの内容がJSONとして読み取れませんでした。');
+      }
+      if (!Array.isArray(parsed)) {
+        throw new Error('ファイルの内容がブックマーク配列の形式ではありません。');
+      }
+      var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
+      sanitized.forEach(function (b, i) { b.order = i; });
+      return { data: sanitized, skipped: parsed.length - sanitized.length };
+    });
+  }
+
+  function notifySkipped(skipped) {
+    if (skipped) alert(skipped + ' 件はURLの形式が不正なため読み込み時に除外されました。');
+  }
+
+  function makeId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  /* ---------- 接続状態の切り替え ---------- */
+
+  var HEADER_BUTTON_IDS = ['toggle-add-btn', 'toggle-select-btn', 'export-btn', 'import-btn'];
+
+  function setHeaderButtonsEnabled(enabled) {
+    HEADER_BUTTON_IDS.forEach(function (id) { document.getElementById(id).disabled = !enabled; });
+  }
+
+  function setConnected(handle, data) {
+    fileHandle = handle;
+    bookmarks = data;
+    state.editingId = null;
+    state.selectMode = false;
+    state.selectedIds.clear();
+    document.getElementById('layout').hidden = false;
+    document.getElementById('connect-screen').hidden = true;
+    document.getElementById('file-status').textContent = '接続中: ' + handle.name;
+    document.getElementById('disconnect-btn').hidden = false;
+    setHeaderButtonsEnabled(true);
+    render();
+  }
+
+  var DEFAULT_CONNECT_MESSAGE = 'ブックマークを保存するJSONファイルを開くか、新しく作成してください。以降の追加・編集はこのファイルに自動保存されます。';
+
+  function setDisconnected() {
+    fileHandle = null;
+    bookmarks = [];
+    document.getElementById('layout').hidden = true;
+    document.getElementById('connect-screen').hidden = false;
+    document.getElementById('reconnect-row').hidden = true; // 直前の再接続案内が残らないようにリセットする
+    document.getElementById('connect-message').textContent = DEFAULT_CONNECT_MESSAGE; // 直前のエラーメッセージが残らないようにリセットする
+    document.getElementById('add-panel').hidden = true;
+    document.getElementById('selection-bar').hidden = true;
+    document.getElementById('file-status').textContent = '未接続';
+    document.getElementById('disconnect-btn').hidden = true;
+    setHeaderButtonsEnabled(false);
+  }
+
+  // 起動時に権限確認が必要なまま保留中のハンドル(再接続ボタンから直接使う。
+  // クリック時にIndexedDBへ再度往復するとユーザー操作の有効期限が切れ、requestPermission()の
+  // 許可プロンプトが出せなくなる恐れがあるため、boot()で取得済みのハンドルをそのまま使い回す)
+  var pendingReconnectHandle = null;
+
+  function boot() {
+    if (!window.showOpenFilePicker) {
+      document.getElementById('unsupported-screen').hidden = false;
+      return;
+    }
+    idbGetHandle().then(function (handle) {
+      if (!handle) { setDisconnected(); return; }
+      return handle.queryPermission({ mode: 'readwrite' }).then(function (perm) {
+        if (perm === 'granted') {
+          return readBookmarksFromHandle(handle).then(function (result) {
+            setConnected(handle, result.data);
+            notifySkipped(result.skipped);
+          }).catch(function (e) {
+            // 権限はあるがファイルの中身が壊れている場合など。原因を明示し、無言の未接続化を避ける
+            setDisconnected();
+            document.getElementById('connect-message').textContent =
+              '前回接続していたファイル(' + handle.name + ')の読み込みに失敗しました: ' +
+              (e && e.message ? e.message : e) + ' 別のファイルを開くか、新規作成してください。';
+          });
+        }
+        // 権限の再確認にはユーザー操作(クリック)が必須のため、再接続ボタンを表示する
+        pendingReconnectHandle = handle;
+        setDisconnected();
+        document.getElementById('reconnect-row').hidden = false;
+        document.getElementById('reconnect-filename').textContent = handle.name;
+      });
+    }).catch(function (e) {
+      setDisconnected();
+      document.getElementById('connect-message').textContent =
+        '接続情報の読み込み中にエラーが発生しました: ' + (e && e.message ? e.message : e);
+    });
+  }
+
+  document.getElementById('open-file-btn').addEventListener('click', function () {
+    window.showOpenFilePicker({
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+      multiple: false
+    }).then(function (handles) {
+      var handle = handles[0];
+      return handle.requestPermission({ mode: 'readwrite' }).then(function (perm) {
+        if (perm !== 'granted') throw new Error('書き込み権限が許可されませんでした。');
+        return readBookmarksFromHandle(handle).then(function (result) {
+          setConnected(handle, result.data);
+          notifySkipped(result.skipped);
+          // 「次回自動再接続」のための記憶保存が失敗しても、今回の接続自体は成立させる
+          idbSetHandle(handle).catch(function () {
+            alert('次回自動的に再接続するための保存に失敗しました。次回はこのファイルを開き直してください。');
+          });
+        });
+      });
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') return; // ユーザーがピッカーをキャンセル
+      alert('ファイルを開けませんでした: ' + (e && e.message ? e.message : e));
+    });
+  });
+
+  document.getElementById('create-file-btn').addEventListener('click', function () {
+    window.showSaveFilePicker({
+      suggestedName: 'bookmarks.json',
+      types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+    }).then(function (handle) {
+      return handle.createWritable().then(function (writable) {
+        return writable.write('[]').then(function () { return writable.close(); });
+      }).then(function () {
+        setConnected(handle, []);
+        idbSetHandle(handle).catch(function () {
+          alert('次回自動的に再接続するための保存に失敗しました。次回はこのファイルを開き直してください。');
+        });
+      });
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') return;
+      alert('ファイルを作成できませんでした: ' + (e && e.message ? e.message : e));
+    });
+  });
+
+  document.getElementById('reconnect-btn').addEventListener('click', function () {
+    var handle = pendingReconnectHandle;
+    if (!handle) return;
+    handle.requestPermission({ mode: 'readwrite' }).then(function (perm) {
+      if (perm !== 'granted') { alert('権限が許可されませんでした。'); return; }
+      return readBookmarksFromHandle(handle).then(function (result) {
+        setConnected(handle, result.data);
+        notifySkipped(result.skipped);
+      });
+    }).catch(function (e) {
+      alert('再接続に失敗しました: ' + (e && e.message ? e.message : e));
+    });
+  });
+
+  document.getElementById('disconnect-btn').addEventListener('click', function () {
+    idbClearHandle().then(function () { setDisconnected(); });
+  });
+
+  /* ---------- URL 判定 ---------- */
+
+  function classifyUrl(raw) {
+    if (/^https:\/\//i.test(raw)) return 'https';
+    if (/^http:\/\//i.test(raw)) return 'http';
+    if (/^file:\/\/\//i.test(raw)) return 'file';
+    return null;
+  }
+
+  function deriveDomain(url, scheme) {
+    if (scheme === 'file') return null;
+    try {
+      return new URL(url).hostname;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function deriveTentativeTitle(url, scheme) {
+    try {
+      if (scheme === 'file') {
+        // file:// はパス中に # や ? を含みうるため、URL() でのフラグメント/クエリ分離を避け文字列operationで抽出する
+        var rawPath = url.replace(/^file:\/\//i, '');
+        var path;
+        try { path = decodeURIComponent(rawPath); } catch (e2) { path = rawPath; }
+        var segments = path.split('/').filter(Boolean);
+        return segments.length ? segments[segments.length - 1] : path;
+      }
+      return new URL(url).hostname;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /* ---------- ユーティリティ ---------- */
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
+  function parseTags(str) {
+    return str.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
+  }
+
+  // クリップボードAPIが使えない環境向けに、非表示textarea+execCommandへフォールバックする
+  function copyToClipboard(text, btn) {
+    var original = btn.textContent;
+    function showSuccess() {
+      btn.textContent = 'コピーしました';
+      setTimeout(function () { btn.textContent = original; }, 1500);
+    }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      if (ok) showSuccess(); else alert('コピーに失敗しました。手動で選択してコピーしてください。');
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showSuccess).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  // 追加フォーム・編集フォーム共通: パスワード欄の表示/非表示切り替え(input#とtype切替のみで完結する)
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action="toggle-password-visibility"]');
+    if (!btn) return;
+    var input = document.getElementById(btn.getAttribute('data-target'));
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? '表示' : '隠す';
+  });
+
+  // ファイル読み込み・インポートされた要素はスキーマ・スキームとも信頼できないため、通常の追加フォームと同じ検証を通してから採用する
+  function sanitizeBookmark(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var url = typeof raw.url === 'string' ? raw.url.trim() : '';
+    var scheme = classifyUrl(url);
+    if (!scheme) return null;
+
+    var title = typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : deriveTentativeTitle(url, scheme) || url;
+    var tags = Array.isArray(raw.tags) ? raw.tags.filter(function (t) { return typeof t === 'string' && t.trim(); }).map(function (t) { return t.trim(); }) : [];
+    var group = typeof raw.group === 'string' && raw.group.trim() ? raw.group.trim() : null;
+    var loginId = typeof raw.loginId === 'string' && raw.loginId.trim() ? raw.loginId.trim() : null;
+    var loginPassword = typeof raw.loginPassword === 'string' && raw.loginPassword ? raw.loginPassword : null;
+    var memo = typeof raw.memo === 'string' && raw.memo.trim() ? raw.memo : null;
+
+    return {
+      id: makeId(),
+      url: url,
+      title: title,
+      tags: tags,
+      group: group,
+      loginId: loginId,
+      loginPassword: loginPassword,
+      memo: memo,
+      scheme: scheme,
+      domain: deriveDomain(url, scheme),
+      order: 0 // 読み込み確定後にファイル内の並び順で採番し直す
+    };
+  }
+
+  /* ---------- 派生データ(グループ・タグ) ---------- */
+
+  function getGroups() {
+    var set = new Set();
+    bookmarks.forEach(function (b) { if (b.group) set.add(b.group); });
+    return Array.from(set).sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  function getTags() {
+    var set = new Set();
+    bookmarks.forEach(function (b) { (b.tags || []).forEach(function (t) { set.add(t); }); });
+    return Array.from(set).sort(function (a, b) { return a.localeCompare(b); });
+  }
+
+  /* ---------- フィルタ・ソート(グループでは絞り込まない。常に全グループを並行表示する) ---------- */
+
+  function sortItems(items) {
+    return items.slice().sort(function (a, b) {
+      switch (state.sort) {
+        case 'title-asc': return (a.title || '').localeCompare(b.title || '');
+        case 'title-desc': return (b.title || '').localeCompare(a.title || '');
+        case 'manual':
+        default: return (a.order || 0) - (b.order || 0);
+      }
+    });
+  }
+
+  function getSearchTagFiltered() {
+    var q = state.search.trim().toLowerCase();
+    return bookmarks.filter(function (b) {
+      if (state.tag && (b.tags || []).indexOf(state.tag) === -1) return false;
+      if (q) {
+        var hay = (b.title + ' ' + b.url + ' ' + (b.tags || []).join(' ')).toLowerCase();
+        if (hay.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  /* ---------- レンダリング ---------- */
+
+  function render() {
+    // 絞り込み中のタグが編集・削除で消滅した場合、絞り込みを解除する(0件で固定化するのを防ぐ)
+    if (state.tag !== null && getTags().indexOf(state.tag) === -1) state.tag = null;
+
+    renderTagNav();
+    renderSelectionBar();
+    renderSections();
+    refreshGroupDatalist();
+
+    var selectBtn = document.getElementById('toggle-select-btn');
+    selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
+    selectBtn.classList.toggle('active', state.selectMode);
+  }
+
+  function refreshGroupDatalist() {
+    var datalist = document.getElementById('group-list');
+    datalist.innerHTML = getGroups().map(function (g) { return '<option value="' + escapeHtml(g) + '">'; }).join('');
+  }
+
+  function renderTagNav() {
+    var nav = document.getElementById('tag-nav');
+    var tags = getTags();
+    if (!tags.length) {
+      nav.innerHTML = '<li style="opacity:0.6;font-family:var(--font-mono);font-size:0.78rem;padding:6px 8px;">タグなし</li>';
+      return;
+    }
+    var html = tags.map(function (t) {
+      var count = bookmarks.filter(function (b) { return (b.tags || []).indexOf(t) !== -1; }).length;
+      return navItem(t, t, state.tag === t, count);
+    }).join('');
+    nav.innerHTML = html;
+
+    nav.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-value');
+        state.tag = (state.tag === val) ? null : val;
+        render();
+      });
+    });
+  }
+
+  function navItem(label, value, isActive, count) {
+    return '<li><button type="button" class="' + (isActive ? 'active' : '') + '" data-value="' + escapeHtml(value || '') + '">' +
+      '<span>' + escapeHtml(label) + '</span><span class="count">' + count + '</span>' +
+      '</button></li>';
+  }
+
+  /* ---------- 選択・グループ化 ---------- */
+
+  function renderSelectionBar() {
+    var bar = document.getElementById('selection-bar');
+    bar.hidden = !state.selectMode;
+    if (!state.selectMode) return;
+
+    var count = state.selectedIds.size;
+    document.getElementById('selection-count').textContent = count + ' 件選択中';
+    document.getElementById('group-assign-btn').disabled = count === 0;
+    document.getElementById('group-clear-btn').disabled = count === 0;
+    document.getElementById('selection-clear-btn').disabled = count === 0;
+  }
+
+  document.getElementById('toggle-select-btn').addEventListener('click', function () {
+    state.selectMode = !state.selectMode;
+    if (!state.selectMode) state.selectedIds.clear();
+    render();
+  });
+
+  document.getElementById('selection-clear-btn').addEventListener('click', function () {
+    state.selectedIds.clear();
+    render();
+  });
+
+  document.getElementById('group-clear-btn').addEventListener('click', function () {
+    if (!state.selectedIds.size) return;
+    bookmarks.forEach(function (b) {
+      if (state.selectedIds.has(b.id)) b.group = null;
+    });
+    saveData(bookmarks);
+    state.selectedIds.clear();
+    render();
+  });
+
+  document.getElementById('group-assign-btn').addEventListener('click', function () {
+    if (!state.selectedIds.size) return;
+    var input = document.getElementById('group-name-input');
+    var name = input.value.trim();
+    if (!name) {
+      alert('グループ名を入力してください。');
+      return;
+    }
+    bookmarks.forEach(function (b) {
+      if (state.selectedIds.has(b.id)) b.group = name;
+    });
+    saveData(bookmarks);
+    state.selectedIds.clear();
+    input.value = '';
+    render();
+  });
+
+  /* ---------- グループ区画の描画(常に全グループ+未分類を並行表示) ---------- */
+
+  function renderSections() {
+    var container = document.getElementById('group-sections');
+    var filtered = getSearchTagFiltered();
+    var groupNames = getGroups(); // 名前付きグループ(アルファベット順) + 最後に未分類
+    var sectionKeys = groupNames.concat([UNGROUPED]);
+
+    document.getElementById('result-count').textContent =
+      filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件) — カードを他のグループ区画にドラッグすると移動できます';
+
+    container.innerHTML = sectionKeys.map(function (key) {
+      var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
+      var title = key === UNGROUPED ? '未分類' : key;
+      var body = items.length
+        ? '<div class="group-grid" data-group-grid="' + escapeHtml(key || '') + '">' +
+            items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
+          '</div>'
+        : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
+
+      return (
+        '<section class="group-section" data-group="' + escapeHtml(key || '') + '">' +
+          '<div class="group-section-header">' +
+            '<h2 class="group-section-title">' + escapeHtml(title) + '</h2>' +
+            '<span class="group-section-count">' + items.length + ' 件</span>' +
+          '</div>' +
+          body +
+        '</section>'
+      );
+    }).join('');
+
+    // グループ区画自体へのドロップ(空欄部分にドロップ = そのグループの末尾へ移動)
+    container.querySelectorAll('.group-section').forEach(function (section) {
+      var groupValue = section.getAttribute('data-group') || null;
+      section.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        section.classList.add('drag-target');
+      });
+      section.addEventListener('dragleave', function (e) {
+        if (e.target === section) section.classList.remove('drag-target');
+      });
+      section.addEventListener('drop', function (e) {
+        e.preventDefault();
+        section.classList.remove('drag-target');
+        var draggedId = e.dataTransfer.getData('text/plain');
+        moveToGroupEnd(draggedId, groupValue);
+      });
+    });
+
+    // カード内イベントの割り当て
+    bookmarks.forEach(function (b) {
+      var card = container.querySelector('[data-card-id="' + CSS.escape(b.id) + '"]');
+      if (!card) return;
+
+      if (b.id === state.editingId) {
+        bindEditCardEvents(card, b);
+        return;
+      }
+
+      var selectBox = card.querySelector('[data-action="select"]');
+      if (selectBox) {
+        selectBox.addEventListener('change', function () {
+          if (selectBox.checked) state.selectedIds.add(b.id);
+          else state.selectedIds.delete(b.id);
+          render();
+        });
+      }
+
+      var editBtn = card.querySelector('[data-action="edit"]');
+      var delBtn = card.querySelector('[data-action="delete"]');
+      var tagBtns = card.querySelectorAll('[data-action="filter-tag"]');
+      if (editBtn) editBtn.addEventListener('click', function () { state.editingId = b.id; render(); });
+      if (delBtn) delBtn.addEventListener('click', function () { handleDelete(b.id); });
+      tagBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var t = btn.getAttribute('data-tag');
+          state.tag = (state.tag === t) ? null : t;
+          render();
+        });
+      });
+
+      var revealBtn = card.querySelector('[data-action="toggle-reveal"]');
+      var pwDisplay = card.querySelector('[data-action="password-display"]');
+      if (revealBtn && pwDisplay) {
+        revealBtn.addEventListener('click', function () {
+          var revealed = revealBtn.getAttribute('data-revealed') === 'true';
+          revealed = !revealed;
+          revealBtn.setAttribute('data-revealed', String(revealed));
+          pwDisplay.textContent = revealed ? b.loginPassword : '••••••••';
+          revealBtn.textContent = revealed ? '隠す' : '表示';
+        });
+      }
+
+      var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
+      if (copyIdBtn) copyIdBtn.addEventListener('click', function () { copyToClipboard(b.loginId, copyIdBtn); });
+
+      var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
+      if (copyPwBtn) copyPwBtn.addEventListener('click', function () { copyToClipboard(b.loginPassword, copyPwBtn); });
+
+      if (!state.selectMode) bindDragEvents(card, b);
+    });
+  }
+
+  /* ---------- ドラッグ&ドロップ(並べ替え・グループ間移動) ---------- */
+
+  function bindDragEvents(card, b) {
+    card.setAttribute('draggable', 'true');
+
+    card.addEventListener('dragstart', function (e) {
+      e.dataTransfer.setData('text/plain', b.id);
+      e.dataTransfer.effectAllowed = 'move';
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', function () {
+      card.classList.remove('dragging');
+      card.classList.remove('drop-before', 'drop-after');
+    });
+    card.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      e.stopPropagation(); // グループ区画側のドロップと二重処理にならないようにする
+      e.dataTransfer.dropEffect = 'move';
+      var rect = card.getBoundingClientRect();
+      var after = (e.clientY - rect.top) > rect.height / 2;
+      card.classList.toggle('drop-after', after);
+      card.classList.toggle('drop-before', !after);
+    });
+    card.addEventListener('dragleave', function () {
+      card.classList.remove('drop-before', 'drop-after');
+    });
+    card.addEventListener('drop', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var rect = card.getBoundingClientRect();
+      var after = (e.clientY - rect.top) > rect.height / 2;
+      card.classList.remove('drop-before', 'drop-after');
+      var draggedId = e.dataTransfer.getData('text/plain');
+      moveBookmark(draggedId, b.id, after);
+    });
+  }
+
+  // targetId の直前(after=false)または直後(after=true)に draggedId のブックマークを移動する。
+  // targetId が別グループに属する場合、draggedId のグループも targetId に合わせて変更する。
+  function moveBookmark(draggedId, targetId, after) {
+    if (!draggedId || draggedId === targetId) return;
+    var dragged = bookmarks.find(function (x) { return x.id === draggedId; });
+    var target = bookmarks.find(function (x) { return x.id === targetId; });
+    if (!dragged || !target) return;
+
+    dragged.group = target.group;
+
+    bookmarks.splice(bookmarks.indexOf(dragged), 1);
+    var toIdx = bookmarks.indexOf(target);
+    if (after) toIdx += 1;
+    bookmarks.splice(toIdx, 0, dragged);
+    bookmarks.forEach(function (x, i) { x.order = i; });
+    saveData(bookmarks);
+    render();
+  }
+
+  // グループ区画の空欄にドロップされた場合、そのグループの末尾に移動する
+  function moveToGroupEnd(draggedId, groupValue) {
+    if (!draggedId) return;
+    var idx = bookmarks.findIndex(function (x) { return x.id === draggedId; });
+    if (idx === -1) return;
+    var item = bookmarks.splice(idx, 1)[0];
+    item.group = groupValue;
+    bookmarks.push(item);
+    bookmarks.forEach(function (x, i) { x.order = i; });
+    saveData(bookmarks);
+    render();
+  }
+
+  function renderCard(b) {
+    var scheme = b.scheme;
+    var iconHtml;
+    if (scheme === 'file') {
+      iconHtml = document.getElementById('icon-file').innerHTML;
+    } else {
+      var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
+      iconHtml = '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
+    }
+
+    var tagsHtml = (b.tags || []).map(function (t) {
+      return '<button type="button" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
+    }).join('');
+
+    var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span><span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
+
+    var checkboxHtml = state.selectMode
+      ? '<input type="checkbox" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
+      : '';
+
+    var credentialsHtml = '';
+    if (b.loginId || b.loginPassword) {
+      credentialsHtml = '<div class="card-credentials">' +
+        (b.loginId
+          ? '<span class="cred-row"><span class="cred-label">ID</span><span class="cred-value">' + escapeHtml(b.loginId) + '</span>' +
+            '<button type="button" class="btn-quiet" data-action="copy-login-id">コピー</button></span>'
+          : '') +
+        (b.loginPassword
+          ? '<span class="cred-row"><span class="cred-label">PW</span><span class="cred-value" data-action="password-display">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span>' +
+            '<button type="button" class="btn-quiet" data-action="toggle-reveal">表示</button>' +
+            '<button type="button" class="btn-quiet" data-action="copy-login-password">コピー</button></span>'
+          : '') +
+      '</div>';
+    }
+
+    var memoHtml = b.memo ? '<p class="card-memo">' + escapeHtml(b.memo) + '</p>' : '';
+
+    return (
+      '<article class="card" data-card-id="' + escapeHtml(b.id) + '">' +
+        '<div class="card-stub">' + grip + '</div>' +
+        '<div class="card-body">' +
+          '<div class="card-top">' +
+            checkboxHtml +
+            '<div class="seal">' + iconHtml + '</div>' +
+            '<div class="card-title-wrap">' +
+              '<h3 class="card-title"><a href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(b.title) + '</a></h3>' +
+              '<p class="card-url">' + escapeHtml(b.url) + '</p>' +
+            '</div>' +
+          '</div>' +
+          (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
+          credentialsHtml +
+          memoHtml +
+          '<div class="card-footer">' +
+            '<div class="card-actions">' +
+              '<button type="button" class="btn-quiet" data-action="edit">編集</button>' +
+              '<button type="button" class="btn-danger" data-action="delete">削除</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function renderEditCard(b) {
+    return (
+      '<article class="card" data-card-id="' + escapeHtml(b.id) + '">' +
+        '<div class="card-stub"></div>' +
+        '<div class="card-body">' +
+          '<form class="edit-form" data-edit-form>' +
+            '<div class="field"><label for="edit-url">URL</label><input id="edit-url" type="text" name="url" value="' + escapeHtml(b.url) + '" required></div>' +
+            '<div class="field"><label for="edit-title">タイトル</label><input id="edit-title" type="text" name="title" value="' + escapeHtml(b.title) + '" required></div>' +
+            '<div class="field"><label for="edit-tags">タグ(カンマ区切り)</label><input id="edit-tags" type="text" name="tags" value="' + escapeHtml((b.tags || []).join(', ')) + '"></div>' +
+            '<div class="field"><label for="edit-group">グループ</label><input id="edit-group" type="text" name="group" value="' + escapeHtml(b.group || '') + '" list="group-list"></div>' +
+            '<div class="field"><label for="edit-login-id">ログインID</label><input id="edit-login-id" type="text" name="loginId" value="' + escapeHtml(b.loginId || '') + '"></div>' +
+            '<div class="field">' +
+              '<label for="edit-login-password">パスワード</label>' +
+              '<div class="password-input-row">' +
+                '<input id="edit-login-password" type="password" name="loginPassword" value="' + escapeHtml(b.loginPassword || '') + '">' +
+                '<button type="button" class="btn-quiet" data-action="toggle-password-visibility" data-target="edit-login-password">表示</button>' +
+              '</div>' +
+              '<p class="warn-hint">※ パスワードは平文で保存されます</p>' +
+            '</div>' +
+            '<div class="field"><label for="edit-memo">メモ</label><textarea id="edit-memo" name="memo">' + escapeHtml(b.memo || '') + '</textarea></div>' +
+            '<div class="edit-form-actions">' +
+              '<button type="submit" class="btn btn-amber">保存</button>' +
+              '<button type="button" class="btn-quiet" data-action="cancel-edit">キャンセル</button>' +
+            '</div>' +
+          '</form>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function bindEditCardEvents(card, b) {
+    var form = card.querySelector('[data-edit-form]');
+    var cancelBtn = card.querySelector('[data-action="cancel-edit"]');
+
+    cancelBtn.addEventListener('click', function () {
+      state.editingId = null;
+      render();
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var url = form.url.value.trim();
+      var scheme = classifyUrl(url);
+      if (!scheme) {
+        alert('URLは http:// / https:// / file:/// のいずれかで始まる必要があります。');
+        return;
+      }
+      b.url = url;
+      b.scheme = scheme;
+      b.domain = deriveDomain(url, scheme);
+      b.title = form.title.value.trim() || deriveTentativeTitle(url, scheme);
+      b.tags = parseTags(form.tags.value);
+      b.group = form.group.value.trim() || null;
+      b.loginId = form.loginId.value.trim() || null;
+      b.loginPassword = form.loginPassword.value || null;
+      b.memo = form.memo.value.trim() ? form.memo.value : null;
+
+      saveData(bookmarks);
+      state.editingId = null;
+      render();
+    });
+  }
+
+  function handleDelete(id) {
+    if (!confirm('このブックマークを削除しますか?')) return;
+    bookmarks = bookmarks.filter(function (b) { return b.id !== id; });
+    state.selectedIds.delete(id);
+    saveData(bookmarks);
+    render();
+  }
+
+  /* ---------- 追加フォーム ---------- */
+
+  var addPanel = document.getElementById('add-panel');
+  var addForm = document.getElementById('add-form');
+  var newUrlInput = document.getElementById('new-url');
+  var newTitleInput = document.getElementById('new-title');
+
+  document.getElementById('toggle-add-btn').addEventListener('click', function () {
+    addPanel.hidden = !addPanel.hidden;
+    if (!addPanel.hidden) newUrlInput.focus();
+  });
+
+  // タイトル未入力時のみ、URLからの仮タイトルで自動補完する
+  newUrlInput.addEventListener('input', function () {
+    if (newTitleInput.value.trim() !== '') return;
+    var scheme = classifyUrl(newUrlInput.value.trim());
+    if (!scheme) return;
+    newTitleInput.value = deriveTentativeTitle(newUrlInput.value.trim(), scheme);
+  });
+
+  addForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = newUrlInput.value.trim();
+    var scheme = classifyUrl(url);
+    if (!scheme) {
+      alert('URLは http:// / https:// / file:/// のいずれかで始まる必要があります。');
+      return;
+    }
+
+    var title = newTitleInput.value.trim() || deriveTentativeTitle(url, scheme);
+    var tags = parseTags(document.getElementById('new-tags').value);
+    var group = document.getElementById('new-group').value.trim() || null;
+    var loginId = document.getElementById('new-login-id').value.trim() || null;
+    var loginPassword = document.getElementById('new-login-password').value || null;
+    var memo = document.getElementById('new-memo').value.trim() ? document.getElementById('new-memo').value : null;
+
+    bookmarks.push({
+      id: makeId(),
+      url: url,
+      title: title,
+      tags: tags,
+      group: group,
+      loginId: loginId,
+      loginPassword: loginPassword,
+      memo: memo,
+      scheme: scheme,
+      domain: deriveDomain(url, scheme),
+      order: bookmarks.length
+    });
+
+    saveData(bookmarks);
+    addForm.reset();
+    addPanel.hidden = true;
+    render();
+  });
+
+  /* ---------- 検索・ソート ---------- */
+
+  document.getElementById('search-input').addEventListener('input', function (e) {
+    state.search = e.target.value;
+    render();
+  });
+
+  document.getElementById('sort-select').value = state.sort;
+  document.getElementById('sort-select').addEventListener('change', function (e) {
+    state.sort = e.target.value;
+    render();
+  });
+
+  /* ---------- エクスポート / インポート(接続ファイルとは別の手動バックアップ用) ---------- */
+
+  document.getElementById('export-btn').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(bookmarks, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = 'bookmarks-export-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  var importInput = document.getElementById('import-file');
+  document.getElementById('import-btn').addEventListener('click', function () {
+    importInput.value = '';
+    importInput.click();
+  });
+
+  importInput.addEventListener('change', function () {
+    var file = importInput.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (e) {
+        alert('JSONの読み込みに失敗しました。ファイルの内容を確認してください。');
+        return;
+      }
+      if (!Array.isArray(parsed)) {
+        alert('インポートするJSONはブックマークの配列である必要があります。');
+        return;
+      }
+
+      var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
+      sanitized.forEach(function (b, i) { b.order = i; });
+      var skipped = parsed.length - sanitized.length;
+      var message = '現在のブックマーク(' + bookmarks.length + ' 件)を、インポートするデータ(' + sanitized.length + ' 件' +
+        (skipped ? '、URL不正のため ' + skipped + ' 件は除外' : '') + ')で置き換えます(接続中のファイルにも書き込まれます)。よろしいですか?';
+      if (!confirm(message)) {
+        return;
+      }
+      bookmarks = sanitized;
+      saveData(bookmarks);
+      state.editingId = null;
+      state.selectedIds.clear();
+      render();
+    };
+    reader.readAsText(file);
+  });
+
+  boot();
+})();
+</script>
+</body>
+</html>
