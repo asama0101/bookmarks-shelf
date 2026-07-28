@@ -60,17 +60,32 @@ Each file's script is a single IIFE with these layers, in order:
    whose URL doesn't match `classifyUrl()`. Both import and file-load flows report how many entries
    were skipped rather than silently dropping them.
 4. **Render layer** — `render()` is the single re-render entrypoint, called after every state
-   mutation; it rebuilds tag nav, selection bar, and group sections from scratch via string
-   concatenation (no virtual DOM/diffing). Bookmarks are always grouped into every existing group
-   plus an "未分類" (ungrouped) section shown side-by-side — there is no "filter down to one group"
-   view; group membership only affects which section a card renders in.
+   mutation; it rebuilds tag nav, group nav, selection bar, and group sections from scratch via
+   string concatenation (no virtual DOM/diffing). Bookmarks are always grouped into every existing
+   group plus an "未分類" (ungrouped) section shown side-by-side — group membership only affects
+   which section a card renders in, and this layout is unaffected by filtering. `state.tag` and
+   `state.group` (sidebar nav selections) narrow which bookmarks appear *within* those sections;
+   `state.group` uses `null` for "no group filter" and `''` (empty string) for "filter to 未分類",
+   which is a different sentinel from `b.group`'s own `null`-for-ungrouped convention — do not
+   conflate the two. `render()` clears `state.tag`/`state.group`/`state.editingGroup` back to their
+   default when the thing they reference (a tag, a named group, a renamed-away group) disappears,
+   so a stale filter or open rename form can't get stuck showing nothing.
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
-   (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist.
+   (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
+   also propagate the target group's `groupOrder` onto the moved bookmark. Group sections themselves
+   are also draggable via a grip icon on each section header (`.group-section-grip`), reordering the
+   groups via `moveGroupSection()`, which renumbers `groupOrder` across every bookmark in every group.
+   Because both card drags and section drags land on the same `.group-section` drop target, a
+   module-scoped `dragKind` ('card' | 'section' | null) set on each `dragstart` disambiguates which
+   drop handler branch to run (`dataTransfer.getData()` cannot be read during `dragover`, so this
+   can't be determined from `dataTransfer` alone). The 未分類 pseudo-section has no grip and is never
+   a valid group-reorder drop target — it always renders last.
 
 ## Data model
 
-Each bookmark: `{ id, url, title, tags[], group, loginId, loginPassword, memo, scheme, domain, order }`.
+Each bookmark:
+`{ id, url, title, tags[], group, groupOrder, loginId, loginPassword, memo, scheme, domain, order }`.
 
 - `loginPassword` is stored and displayed **in plaintext** by design (there's a visible warning in
   the UI, `※ パスワードは平文で保存されます`) — this is a deliberate trade-off for a local personal
@@ -79,3 +94,11 @@ Each bookmark: `{ id, url, title, tags[], group, loginId, loginPassword, memo, s
   bookmarks share.
 - `order` is a manual sort index, only meaningful when the sort mode is `manual` (the other modes,
   `title-asc`/`title-desc`, ignore it).
+- `groupOrder` is a manual sort index for the group *section itself* (which group's section appears
+  before which), denormalized the same way `group` is: every bookmark sharing a `group` value is
+  expected to carry the same `groupOrder`. Every code path that sets `b.group` must also set
+  `b.groupOrder` (via `getGroupOrderForName()`, which resolves an existing group's current value or
+  assigns a new trailing value) — unlike `order`, `groupOrder` cannot be safely recomputed from
+  array position, so it can't be blindly renumbered the way `order` is. Missing `groupOrder` values
+  (e.g. data saved before this field existed) are backfilled once via `assignGroupOrder()`, seeded
+  from the then-current alphabetical order — the same one-time-migration-shim pattern `order` uses.
