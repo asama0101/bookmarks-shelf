@@ -776,7 +776,6 @@
   <dl class="help-grid">
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
-    <dt><kbd>s</kbd></dt><dd>選択モードの切り替え</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
     <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
@@ -784,7 +783,8 @@
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
     <dt><kbd>Space</kbd></dt><dd>選択モード中: フォーカス中のカードの選択を切り替え</dd>
-    <dt><kbd>t</kbd></dt><dd>フォーカス中のカードのタグで絞り込みを巡回</dd>
+    <dt><kbd>t</kbd></dt><dd>タグ絞り込みナビへフォーカス</dd>
+    <dt><kbd>g</kbd></dt><dd>グループ絞り込みナビへフォーカス</dd>
     <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
     <dt><kbd>p</kbd></dt><dd>フォーカス中のカードのパスワードをコピー</dd>
   </dl>
@@ -1861,9 +1861,15 @@
         e.preventDefault();
         clickHeaderButton('toggle-add-btn');
         return true;
-      case 's':
+      case 't':
         e.preventDefault();
-        clickHeaderButton('toggle-select-btn');
+        var firstTagBtn = document.querySelector('#tag-nav button');
+        if (firstTagBtn) firstTagBtn.focus();
+        return true;
+      case 'g':
+        e.preventDefault();
+        var firstGroupBtn = document.querySelector('#group-nav button');
+        if (firstGroupBtn) firstGroupBtn.focus();
         return true;
       case '?':
         e.preventDefault();
@@ -1906,17 +1912,6 @@
         if (state.selectedIds.has(cardId)) state.selectedIds.delete(cardId);
         else state.selectedIds.add(cardId);
         render();
-        return;
-      case 't':
-        e.preventDefault();
-        // カード自身のタグを順に巡回する。最後のタグの次で絞り込み解除に戻る。
-        var tagBtns = Array.prototype.slice.call(card.querySelectorAll('[data-action="filter-tag"]'));
-        if (!tagBtns.length) return;
-        var tags = tagBtns.map(function (btn) { return btn.getAttribute('data-tag'); });
-        var tagIdx = tags.indexOf(state.tag);
-        var nextTagIdx = tagIdx + 1;
-        if (nextTagIdx >= tags.length) { state.tag = null; render(); }
-        else tagBtns[nextTagIdx].click(); // 既存のfilter-tagクリックハンドラ(1284-1290行)にそのまま委譲
         return;
       case 'c':
         e.preventDefault();
