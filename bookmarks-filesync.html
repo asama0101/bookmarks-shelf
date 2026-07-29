@@ -1955,12 +1955,14 @@
     });
   }
 
+  // 削除が実際に行われたかを返す(キーボード操作側が、確認ダイアログのキャンセル時にフォーカス移動先を巻き戻すため)
   function handleDelete(id) {
-    if (!confirm('このブックマークを削除しますか?')) return;
+    if (!confirm('このブックマークを削除しますか?')) return false;
     bookmarks = bookmarks.filter(function (b) { return b.id !== id; });
     state.selectedIds.delete(id);
     saveData(bookmarks);
     render();
+    return true;
   }
 
   /* ---------- 追加フォーム ---------- */
@@ -2224,6 +2226,11 @@
         var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
         if (copyPwBtn) copyPwBtn.click(); // 既存のcopyToClipboard呼び出し(1609行)にそのまま委譲
         return;
+      case 'Delete':
+      case 'Backspace':
+        e.preventDefault(); // 一部環境でBackspaceが「戻る」に割り当たるのを防ぐ
+        deleteCardWithFocusHandoff(card);
+        return;
     }
   });
 
@@ -2256,6 +2263,24 @@
     var cards = getNavigableCards();
     var next = cards[cards.indexOf(card) + direction];
     if (next) next.focus();
+  }
+
+  // 削除後のフォーカス移動先は「次のカード」、無ければ「前のカード」、一覧が空になる場合はどこにもフォーカスしない。
+  // handleDelete()がrender()を内部で呼ぶため、移動先IDは削除の前に確定させておく必要がある。
+  function deleteCardWithFocusHandoff(card) {
+    var cards = getNavigableCards();
+    var pos = cards.indexOf(card);
+    var neighbor = cards[pos + 1] || cards[pos - 1] || null;
+    var previousFocusedCardId = focusedCardId;
+
+    focusedCardId = neighbor ? neighbor.getAttribute('data-card-id') : null;
+    if (!handleDelete(card.getAttribute('data-card-id'))) {
+      focusedCardId = previousFocusedCardId; // 確認ダイアログでキャンセルされたら元に戻す
+      return;
+    }
+    // confirm()の表示でフォーカスが外れるブラウザ挙動に左右されないよう、削除確定後に明示的に移す
+    var restored = document.querySelector('#group-sections .card[tabindex="0"]');
+    if (restored) restored.focus();
   }
 
   // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える
