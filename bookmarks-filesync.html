@@ -577,6 +577,7 @@
   .card.dragging { opacity: 0.45; }
   .card.drop-before { box-shadow: 0 -3px 0 var(--amber), 0 2px 8px var(--shadow); }
   .card.drop-after { box-shadow: 0 3px 0 var(--amber), 0 2px 8px var(--shadow); }
+  .card:focus { outline: 3px solid var(--amber); outline-offset: 2px; }
   .group-section.drag-target { border-color: var(--amber); border-style: dashed; }
 
   .card-body {
@@ -1469,6 +1470,10 @@
 
   function renderSections() {
     var container = document.getElementById('group-sections');
+    // render()でDOMを作り直すとフォーカスが失われるため、カード自身にフォーカスがあった場合だけ復元する。
+    // カード内のボタンにフォーカスがある場合(編集ボタンのクリック等)は、その後の遷移を妨げないよう復元しない。
+    var active = document.activeElement;
+    var hadCardFocus = !!(active && active.classList && active.classList.contains('card') && container.contains(active));
     var filtered = getSearchTagFiltered();
     var groupNames = getGroups(); // 名前付きグループ(groupOrder順・ドラッグ&ドロップや矢印ボタンで並べ替え可能) + 最後に未分類
     var sectionKeys = groupNames.concat([UNGROUPED]);
@@ -1549,6 +1554,9 @@
 
       if (!state.selectMode) bindDragEvents(card, b);
     });
+
+    var rovingTarget = applyRovingTabindex();
+    if (hadCardFocus && rovingTarget) rovingTarget.focus();
   }
 
   // グループ区画自体へのドロップ: カードのドロップ(空欄部分 = そのグループの末尾へ移動)と、
@@ -1772,13 +1780,13 @@
     }
 
     var tagsHtml = (b.tags || []).map(function (t) {
-      return '<button type="button" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
+      return '<button type="button" tabindex="-1" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
     }).join('');
 
     var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span><span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
 
     var checkboxHtml = state.selectMode
-      ? '<input type="checkbox" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
+      ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
       : '';
 
     var credentialsHtml = '';
@@ -1786,12 +1794,12 @@
       credentialsHtml = '<div class="card-credentials">' +
         (b.loginId
           ? '<span class="cred-row"><span class="cred-label">ID</span><span class="cred-value">' + escapeHtml(b.loginId) + '</span>' +
-            '<button type="button" class="btn-quiet" data-action="copy-login-id">コピー</button></span>'
+            '<button type="button" tabindex="-1" class="btn-quiet" data-action="copy-login-id">コピー</button></span>'
           : '') +
         (b.loginPassword
           ? '<span class="cred-row"><span class="cred-label">PW</span><span class="cred-value" data-action="password-display">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span>' +
-            '<button type="button" class="btn-quiet" data-action="toggle-reveal">表示</button>' +
-            '<button type="button" class="btn-quiet" data-action="copy-login-password">コピー</button></span>'
+            '<button type="button" tabindex="-1" class="btn-quiet" data-action="toggle-reveal">表示</button>' +
+            '<button type="button" tabindex="-1" class="btn-quiet" data-action="copy-login-password">コピー</button></span>'
           : '') +
       '</div>';
     }
@@ -1799,14 +1807,14 @@
     var memoHtml = b.memo ? '<p class="card-memo">' + escapeHtml(b.memo) + '</p>' : '';
 
     return (
-      '<article class="card" data-card-id="' + escapeHtml(b.id) + '">' +
+      '<article class="card" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
         '<div class="card-stub">' + grip + '</div>' +
         '<div class="card-body">' +
           '<div class="card-top">' +
             checkboxHtml +
             '<div class="seal">' + iconHtml + '</div>' +
             '<div class="card-title-wrap">' +
-              '<h3 class="card-title"><a href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(b.title) + '</a></h3>' +
+              '<h3 class="card-title"><a href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
               '<p class="card-url">' + escapeHtml(b.url) + '</p>' +
             '</div>' +
           '</div>' +
@@ -1815,8 +1823,8 @@
           memoHtml +
           '<div class="card-footer">' +
             '<div class="card-actions">' +
-              '<button type="button" class="btn-quiet" data-action="edit">編集</button>' +
-              '<button type="button" class="btn-danger" data-action="delete">削除</button>' +
+              '<button type="button" tabindex="-1" class="btn-quiet" data-action="edit">編集</button>' +
+              '<button type="button" tabindex="-1" class="btn-danger" data-action="delete">削除</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -2061,6 +2069,37 @@
         clickHeaderButton('toggle-select-btn');
         return;
     }
+  });
+
+  // キーボード操作でフォーカス中のカードID。render()がDOMを作り直すため、stateではなくここで一時保持する。
+  var focusedCardId = null;
+
+  // ロービングの対象は tabindex 属性を持つカードのみ。編集フォームに差し替わったカード(renderEditCard)は
+  // 属性を持たないため自動的に除外され、フォーム内inputへ自然にTab遷移できる。
+  function getNavigableCards() {
+    return Array.prototype.slice.call(document.querySelectorAll('#group-sections .card[tabindex]'));
+  }
+
+  // 再描画のたびにTabの停止位置(tabindex="0")を1枚だけに絞り直す。対象は直前までフォーカスしていたカード、
+  // それが検索・フィルタ・削除で消えている場合と未フォーカスの場合は表示中の先頭カード。
+  function applyRovingTabindex() {
+    var cards = getNavigableCards();
+    if (!cards.length) return null; // 表示中カードが0件のときはどのカードにもtabindex="0"を置かない
+    var target = null;
+    if (focusedCardId !== null) {
+      target = cards.filter(function (c) { return c.getAttribute('data-card-id') === focusedCardId; })[0] || null;
+    }
+    if (!target) target = cards[0];
+    cards.forEach(function (c) { c.setAttribute('tabindex', c === target ? '0' : '-1'); });
+    return target;
+  }
+
+  // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える
+  document.getElementById('group-sections').addEventListener('focusin', function (e) {
+    var card = e.target.closest('#group-sections .card[tabindex]');
+    if (!card) return;
+    focusedCardId = card.getAttribute('data-card-id');
+    getNavigableCards().forEach(function (c) { c.setAttribute('tabindex', c === card ? '0' : '-1'); });
   });
 
   boot();
