@@ -1870,6 +1870,60 @@
         toggleHelp();
         return;
     }
+
+    var card = e.target.closest('#group-sections .card[tabindex]');
+    if (!card) return;
+    var cardId = card.getAttribute('data-card-id');
+
+    switch (e.key) {
+      case 'ArrowDown':
+      case 'ArrowUp':
+        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
+        moveCardFocus(card, e.key === 'ArrowDown' ? 1 : -1);
+        return;
+      case 'Enter':
+        e.preventDefault();
+        // クリック時と完全に同じ経路(target=_blank rel=noopener)で開くため、既存のリンクを踏む
+        var link = card.querySelector('.card-title a');
+        if (link) link.click();
+        return;
+      case 'e':
+        e.preventDefault();
+        state.editingId = cardId;
+        render();
+        // render()内のフォーカス復元より後に呼ぶことで、編集フォームの先頭inputへフォーカスを渡す
+        var urlInput = document.getElementById('edit-url');
+        if (urlInput) urlInput.focus();
+        return;
+      case ' ':
+        if (!state.selectMode) return; // 選択モード外ではSpaceの既定動作(スクロール)を残す
+        e.preventDefault();
+        if (state.selectedIds.has(cardId)) state.selectedIds.delete(cardId);
+        else state.selectedIds.add(cardId);
+        render();
+        return;
+      case 't':
+        e.preventDefault();
+        // カード自身のタグを順に巡回する。最後のタグの次で絞り込み解除に戻る。
+        var tagBtns = Array.prototype.slice.call(card.querySelectorAll('[data-action="filter-tag"]'));
+        if (!tagBtns.length) return;
+        var tags = tagBtns.map(function (btn) { return btn.getAttribute('data-tag'); });
+        var tagIdx = tags.indexOf(state.tag);
+        var nextTagIdx = tagIdx + 1;
+        if (nextTagIdx >= tags.length) { state.tag = null; render(); }
+        else tagBtns[nextTagIdx].click(); // 既存のfilter-tagクリックハンドラ(1284-1290行)にそのまま委譲
+        return;
+      case 'c':
+        e.preventDefault();
+        var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
+        if (copyIdBtn) copyIdBtn.click(); // 既存のcopyToClipboard呼び出し(1305行)にそのまま委譲
+        return;
+      case 'p':
+        e.preventDefault();
+        var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
+        if (copyPwBtn) copyPwBtn.click(); // 既存のcopyToClipboard呼び出し(1308行)にそのまま委譲
+        return;
+    }
   });
 
   // キーボード操作でフォーカス中のカードID。render()がDOMを作り直すため、stateではなくここで一時保持する。
@@ -1893,6 +1947,14 @@
     if (!target) target = cards[0];
     cards.forEach(function (c) { c.setAttribute('tabindex', c === target ? '0' : '-1'); });
     return target;
+  }
+
+  // 表示中の全カードをDOM順の1本のリストとして扱い、前後のカードへフォーカスを移す(区画をまたぐ移動も含む)。
+  // tabindexの張り替えとfocusedCardIdの更新はfocusinハンドラ側で行われる。
+  function moveCardFocus(card, direction) {
+    var cards = getNavigableCards();
+    var next = cards[cards.indexOf(card) + direction];
+    if (next) next.focus();
   }
 
   // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える
