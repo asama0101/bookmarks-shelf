@@ -782,7 +782,7 @@
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
-    <dt><kbd>s</kbd></dt><dd>フォーカス中のカードの選択を切り替え（未選択モードなら自動で選択モードに入る）</dd>
+    <dt><kbd>s</kbd></dt><dd>カード一覧へフォーカス</dd>
     <dt><kbd>t</kbd></dt><dd>タグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループ絞り込みナビへフォーカス</dd>
     <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
@@ -1875,6 +1875,11 @@
         e.preventDefault();
         toggleHelp();
         return true;
+      case 's':
+        e.preventDefault();
+        var focusTarget = document.querySelector('#group-sections .card[tabindex="0"]');
+        if (focusTarget) focusTarget.focus();
+        return true;
     }
     return false;
   }
@@ -1905,13 +1910,6 @@
         // render()内のフォーカス復元より後に呼ぶことで、編集フォームの先頭inputへフォーカスを渡す
         var urlInput = document.getElementById('edit-url');
         if (urlInput) urlInput.focus();
-        return;
-      case 's':
-        e.preventDefault();
-        state.selectMode = true; // 選択モードOFFでもs一発で選択モードに入り、そのカードを選択する
-        if (state.selectedIds.has(cardId)) state.selectedIds.delete(cardId);
-        else state.selectedIds.add(cardId);
-        render();
         return;
       case 'c':
         e.preventDefault();
