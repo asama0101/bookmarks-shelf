@@ -219,6 +219,9 @@ git commit -m "feat: add global keyboard shortcuts (/, n, s) with text-input gua
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
     <dt><kbd>Space</kbd></dt><dd>選択モード中: フォーカス中のカードの選択を切り替え</dd>
+    <dt><kbd>t</kbd></dt><dd>フォーカス中のカードのタグで絞り込みを巡回</dd>
+    <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
+    <dt><kbd>p</kbd></dt><dd>フォーカス中のカードのパスワードをコピー</dd>
   </dl>
 </section>
 ```
@@ -431,9 +434,11 @@ git commit -m "feat: add roving tabindex and focus persistence for card list"
 
 ---
 
-### Task 4: カード内ショートカット（`↑` `↓` `Enter` `e` `Space`）
+### Task 4: カード内ショートカット（`↑` `↓` `Enter` `e` `Space` `t` `c` `p`）
 
-**充足要件:** R2の削除を除くキー操作
+**充足要件:** R2の削除を除くキー操作（`t`/`c`/`p`はCP-B指摘への対応として追加。roving tabindexでカード内の
+タグボタン・ID/パスワードコピーボタンがTab到達不能になるため、代替のショートカットで到達性を確保する。
+パスワード表示切替ボタンには代替を設けない——ユーザー確認済み）
 
 **Files:**
 - Modify: `bookmarks.html`キーボードセクション（`keydown`の`switch`後に追記、関数追加）
@@ -441,13 +446,15 @@ git commit -m "feat: add roving tabindex and focus persistence for card list"
 
 **Interfaces:**
 - Produces: `moveCardFocus(card, direction)`、`keydown`リスナー内のカード分岐`switch`（Task 5がここに`Delete`/`Backspace`を追加）
-- Consumes: Task 1（`keydown`リスナー）、Task 3（`getNavigableCards()`、`.card[tabindex]`、`focusin`ハンドラ）
+- Consumes: Task 1（`keydown`リスナー）、Task 3（`getNavigableCards()`、`.card[tabindex]`、`focusin`ハンドラ）、既存の`[data-action="filter-tag"]`/`[data-action="copy-login-id"]`/`[data-action="copy-login-password"]`クリックハンドラ（bookmarks.html:1218-1247）
 
 - [ ] **Step 1: RED確認**
 
 - `[data-card-id="k1"]`にfocus → `ArrowDown`押下 → `document.activeElement.getAttribute('data-card-id')` → 期待するRED: `"k1"`（変化なし）
 - 同上で`Enter`押下 → URLが開かれない
 - `e`押下 → `.edit-form`が現れない
+- `t`押下 → `state.tag`相当（`document.querySelector('[data-action="filter-tag"]').classList.contains('active')`）が変化しない
+- `c`押下 → クリップボードコピーの視覚フィードバック（`document.querySelector('[data-action="copy-login-id"]').textContent`）が変化しない
 
 - [ ] **Step 2: 実装**
 
@@ -497,6 +504,27 @@ git commit -m "feat: add roving tabindex and focus persistence for card list"
         else state.selectedIds.add(cardId);
         render();
         return;
+      case 't':
+        e.preventDefault();
+        // カード自身のタグを順に巡回する。最後のタグの次で絞り込み解除に戻る。
+        var tagBtns = Array.prototype.slice.call(card.querySelectorAll('[data-action="filter-tag"]'));
+        if (!tagBtns.length) return;
+        var tags = tagBtns.map(function (btn) { return btn.getAttribute('data-tag'); });
+        var tagIdx = tags.indexOf(state.tag);
+        var nextTagIdx = tagIdx + 1;
+        if (nextTagIdx >= tags.length) { state.tag = null; render(); }
+        else tagBtns[nextTagIdx].click(); // 既存のfilter-tagクリックハンドラ(1223-1229行)にそのまま委譲
+        return;
+      case 'c':
+        e.preventDefault();
+        var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
+        if (copyIdBtn) copyIdBtn.click(); // 既存のcopyToClipboard呼び出し(1244行)にそのまま委譲
+        return;
+      case 'p':
+        e.preventDefault();
+        var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
+        if (copyPwBtn) copyPwBtn.click(); // 既存のcopyToClipboard呼び出し(1247行)にそのまま委譲
+        return;
     }
 ```
 
@@ -508,6 +536,12 @@ git commit -m "feat: add roving tabindex and focus persistence for card list"
 - `e`: k2にfocus→`e`押下→`.edit-form`が存在、`document.activeElement.id === "edit-url"`。続けて`Escape`で閉じ、`document.activeElement.getAttribute('data-card-id') === "k2"`に戻ることも確認（Task 2との結合確認）
 - `Space`（選択モード中）: `s`押下→k1にfocus→`Space`→`selection-count.textContent === "1 件選択中"`、チェック済みチェックボックス数`=== 1`、`document.activeElement.getAttribute('data-card-id') === "k1"`（render()を跨いでフォーカスが残ることの実証）→再度`Space`で`"0 件選択中"`
 - `Space`（選択モード外）: k1にfocus→`Space`→`selection-bar.hidden === true`のまま、チェックボックス数`=== 0`（既定のスクロール動作を妨げない）
+- `t`（単一タグ）: k1（タグ`work`のみ）にfocus→`t`→`state.tag`相当として`document.querySelector('[data-tag="work"]').classList.contains('active') === true`→再度`t`→`false`（一周して解除）
+- `t`（タグ無し）: k2（タグ無し）にfocus→`t`→コンソールエラー無し・`render()`が呼ばれない（`document.querySelectorAll('#group-sections .card').length === 3`のまま変化なし）
+- `c`: k1にfocus→`c`→`document.querySelector('[data-card-id="k1"] [data-action="copy-login-id"]').textContent === "コピーしました"`（1.5秒後に元の文言へ戻る、既存`copyToClipboard`の挙動どおり）
+- `c`（loginId無し）: k2にfocus→`c`→コンソールエラー無し（`copyIdBtn`が存在せず何もしない）
+- `p`: k1にfocus→`p`→`document.querySelector('[data-card-id="k1"] [data-action="copy-login-password"]').textContent === "コピーしました"`
+- `p`（loginPassword無し）: k2にfocus→`p`→コンソールエラー無し
 
 - [ ] **Step 4: bookmarks-filesync.htmlへの同一差分適用と一致確認**
 
