@@ -237,6 +237,9 @@
     background: var(--card);
     border-bottom: 1px solid var(--sage);
     padding: 18px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
   }
   .help-panel[hidden] { display: none; }
 
@@ -876,7 +879,7 @@
     <dt><kbd>s</kbd></dt><dd>選択モードの切り替え</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
     <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
-    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></dt><dd>カード間のフォーカス移動</dd>
+    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
@@ -2175,9 +2178,14 @@
   function handleCardShortcut(e, card, cardId) {
     switch (e.key) {
       case 'ArrowDown':
-      case 'ArrowUp':
+      case 'ArrowRight':
         e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocus(card, e.key === 'ArrowDown' ? 1 : -1);
+        moveCardFocus(card, 1);
+        return;
+      case 'ArrowUp':
+      case 'ArrowLeft':
+        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
+        moveCardFocus(card, -1);
         return;
       case 'Enter':
         e.preventDefault();
