@@ -2025,6 +2025,44 @@
     reader.readAsText(file);
   });
 
+  /* ---------- キーボード操作 ---------- */
+
+  // 入力中のタイピングをショートカットが奪わないようにするための判定。
+  // select も対象に含めるのは、並べ替えセレクトで文字キーによる項目ジャンプが効かなくなるのを避けるため。
+  function isTextInputElement(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  }
+
+  // ヘッダーのボタンはfilesync版ではファイル未接続時にdisabledになる。
+  // ショートカットもクリックと同じく無反応にするため、disabledを明示的に確認してから発火する。
+  function clickHeaderButton(id) {
+    var btn = document.getElementById(id);
+    if (!btn || btn.disabled) return;
+    btn.click();
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
+    if (isTextInputElement(e.target)) return;
+
+    switch (e.key) {
+      case '/':
+        e.preventDefault(); // フォーカス移動後に '/' が入力されてしまうのを防ぐ
+        document.getElementById('search-input').focus();
+        return;
+      case 'n':
+        e.preventDefault();
+        clickHeaderButton('toggle-add-btn');
+        return;
+      case 's':
+        e.preventDefault();
+        clickHeaderButton('toggle-select-btn');
+        return;
+    }
+  });
+
   boot();
 })();
 </script>
