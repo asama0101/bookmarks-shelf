@@ -538,6 +538,7 @@ git commit -m "feat: add roving tabindex and focus persistence for card list"
 - `Space`（選択モード外）: k1にfocus→`Space`→`selection-bar.hidden === true`のまま、チェックボックス数`=== 0`（既定のスクロール動作を妨げない）
 - `t`（単一タグ）: k1（タグ`work`のみ）にfocus→`t`→`state.tag`相当として`document.querySelector('[data-tag="work"]').classList.contains('active') === true`→再度`t`→`false`（一周して解除）
 - `t`（タグ無し）: k2（タグ無し）にfocus→`t`→コンソールエラー無し・`render()`が呼ばれない（`document.querySelectorAll('#group-sections .card').length === 3`のまま変化なし）
+- `t`（複数タグの全周確認）: `state.tag`によるフィルタは対象タグを持つカードしか表示しないため（CLAUDE.md記載の仕様）、`tags.indexOf(state.tag) === -1`になるのは「フィルタ無し（`state.tag === null`）でカードにタグがある」場合のみであり、この分岐は上記「`t`（単一タグ）」シナリオの1回目の押下で既に通っている。多タグの全周動作を検証するため、一時的に`k1`を2タグ（`tags: ['work', 'urgent']`）でシードし直し、k1にfocusして`t`を3回押下→評価: `[document.querySelector('[data-tag="work"]').classList.contains('active'), document.querySelector('[data-tag="urgent"]').classList.contains('active')]`。期待するGREEN: 1回目`[true, false]`、2回目`[false, true]`、3回目`[false, false]`（一周して解除）
 - `c`: k1にfocus→`c`→`document.querySelector('[data-card-id="k1"] [data-action="copy-login-id"]').textContent === "コピーしました"`（1.5秒後に元の文言へ戻る、既存`copyToClipboard`の挙動どおり）
 - `c`（loginId無し）: k2にfocus→`c`→コンソールエラー無し（`copyIdBtn`が存在せず何もしない）
 - `p`: k1にfocus→`p`→`document.querySelector('[data-card-id="k1"] [data-action="copy-login-password"]').textContent === "コピーしました"`
