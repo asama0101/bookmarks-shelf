@@ -1612,7 +1612,10 @@
     });
 
     var rovingTarget = applyRovingTabindex();
-    if (hadCardFocus && rovingTarget) rovingTarget.focus();
+    // 編集モードに入る際は、直後にeハンドラが編集フォームへ明示的にフォーカスを移すため、
+    // ここでのロービングフォーカス復元を発火させない(発火するとfocusinがfocusedCardIdを
+    // 編集中カード以外の値へ上書きしてしまう)。
+    if (hadCardFocus && rovingTarget && state.editingId === null) rovingTarget.focus();
   }
 
   // グループ区画自体へのドロップ: カードのドロップ(空欄部分 = そのグループの末尾へ移動)と、
@@ -2145,39 +2148,31 @@
     }
   }
 
-  document.addEventListener('keydown', function (e) {
-    if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
-
-    if (e.key === 'Escape') {
-      closeTopmostLayer();
-      return;
-    }
-
-    if (isTextInputElement(e.target)) return;
-
+  // カードに依存しないグローバルショートカット。マッチしてハンドリングした場合はtrueを返す。
+  function handleGlobalShortcut(e) {
     switch (e.key) {
       case '/':
         e.preventDefault(); // フォーカス移動後に '/' が入力されてしまうのを防ぐ
         document.getElementById('search-input').focus();
-        return;
+        return true;
       case 'n':
         e.preventDefault();
         clickHeaderButton('toggle-add-btn');
-        return;
+        return true;
       case 's':
         e.preventDefault();
         clickHeaderButton('toggle-select-btn');
-        return;
+        return true;
       case '?':
         e.preventDefault();
         toggleHelp();
-        return;
+        return true;
     }
+    return false;
+  }
 
-    var card = e.target.closest('#group-sections .card[tabindex]');
-    if (!card) return;
-    var cardId = card.getAttribute('data-card-id');
-
+  // フォーカス中のカードに対するショートカット。
+  function handleCardShortcut(e, card, cardId) {
     switch (e.key) {
       case 'ArrowDown':
       case 'ArrowUp':
@@ -2232,6 +2227,25 @@
         deleteCardWithFocusHandoff(card);
         return;
     }
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
+
+    if (e.key === 'Escape') {
+      closeTopmostLayer();
+      return;
+    }
+
+    if (isTextInputElement(e.target)) return;
+
+    if (handleGlobalShortcut(e)) return;
+
+    var card = e.target.closest('#group-sections .card[tabindex]');
+    if (!card) return;
+    var cardId = card.getAttribute('data-card-id');
+
+    handleCardShortcut(e, card, cardId);
   });
 
   // キーボード操作でフォーカス中のカードID。render()がDOMを作り直すため、stateではなくここで一時保持する。
@@ -2283,12 +2297,14 @@
     if (restored) restored.focus();
   }
 
-  // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える
+  // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える。
+  // tabindexの張り替え自体はapplyRovingTabindex()に委譲する(focusedCardIdは直前にcardへ合わせて
+  // いるため、applyRovingTabindex()は必ずこのcardを選び直し、同じ結果になる)。
   document.getElementById('group-sections').addEventListener('focusin', function (e) {
     var card = e.target.closest('#group-sections .card[tabindex]');
     if (!card) return;
     focusedCardId = card.getAttribute('data-card-id');
-    getNavigableCards().forEach(function (c) { c.setAttribute('tabindex', c === card ? '0' : '-1'); });
+    applyRovingTabindex();
   });
 
   boot();
