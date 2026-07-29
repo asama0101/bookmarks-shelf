@@ -882,7 +882,7 @@
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
-    <dt><kbd>Space</kbd></dt><dd>選択モード中: フォーカス中のカードの選択を切り替え</dd>
+    <dt><kbd>Space</kbd></dt><dd>フォーカス中のカードの選択を切り替え（未選択モードなら自動で選択モードに入る）</dd>
     <dt><kbd>t</kbd></dt><dd>タグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループ絞り込みナビへフォーカス</dd>
     <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
@@ -2208,8 +2208,8 @@
         if (urlInput) urlInput.focus();
         return;
       case ' ':
-        if (!state.selectMode) return; // 選択モード外ではSpaceの既定動作(スクロール)を残す
         e.preventDefault();
+        state.selectMode = true; // 選択モードOFFでもSpace一発で選択モードに入り、そのカードを選択する
         if (state.selectedIds.has(cardId)) state.selectedIds.delete(cardId);
         else state.selectedIds.add(cardId);
         render();
