@@ -233,6 +233,43 @@
   }
   .add-panel[hidden] { display: none; }
 
+  .help-panel {
+    background: var(--card);
+    border-bottom: 1px solid var(--sage);
+    padding: 18px 24px;
+  }
+  .help-panel[hidden] { display: none; }
+
+  .help-panel h2 {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    margin: 0 0 10px;
+  }
+
+  .help-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 16px;
+    max-width: 640px;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .help-grid dt { margin: 0; }
+  .help-grid dd { margin: 0; color: var(--ink-soft); }
+
+  .help-grid kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid var(--sage);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    background: var(--ivory);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
   .add-grid {
     display: grid;
     grid-template-columns: 1.4fr 1fr 1fr 1fr auto;
@@ -829,6 +866,25 @@
       <textarea id="new-memo" form="add-form" placeholder="メモ"></textarea>
     </div>
   </div>
+</section>
+
+<section class="help-panel" id="help-panel" hidden>
+  <h2>キーボードショートカット</h2>
+  <dl class="help-grid">
+    <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
+    <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
+    <dt><kbd>s</kbd></dt><dd>選択モードの切り替え</dd>
+    <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
+    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
+    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></dt><dd>カード間のフォーカス移動</dd>
+    <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
+    <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
+    <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
+    <dt><kbd>Space</kbd></dt><dd>選択モード中: フォーカス中のカードの選択を切り替え</dd>
+    <dt><kbd>t</kbd></dt><dd>フォーカス中のカードのタグで絞り込みを巡回</dd>
+    <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
+    <dt><kbd>p</kbd></dt><dd>フォーカス中のカードのパスワードをコピー</dd>
+  </dl>
 </section>
 
 <div class="layout" id="layout" hidden>
@@ -2051,8 +2107,50 @@
     btn.click();
   }
 
+  var helpPanel = document.getElementById('help-panel');
+
+  function toggleHelp() {
+    helpPanel.hidden = !helpPanel.hidden;
+  }
+
+  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → 各種フォーム(編集・追加・グループ名リネーム) → 選択モード。
+  // フォームは3種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。
+  function closeTopmostLayer() {
+    if (!helpPanel.hidden) {
+      helpPanel.hidden = true;
+      return;
+    }
+
+    var closedEditingCard = state.editingId !== null;
+    var closedForm = false;
+    if (state.editingId !== null) { state.editingId = null; closedForm = true; }
+    if (state.editingGroup !== null) { state.editingGroup = null; closedForm = true; }
+    if (!addPanel.hidden) { addPanel.hidden = true; closedForm = true; }
+    if (closedForm) {
+      render();
+      // 編集フォームを閉じるとフォーカスが行き場を失うため、Tabの停止位置になっているカードへ戻す
+      if (closedEditingCard) {
+        var target = document.querySelector('#group-sections .card[tabindex="0"]');
+        if (target) target.focus();
+      }
+      return;
+    }
+
+    if (state.selectMode) {
+      state.selectMode = false;
+      state.selectedIds.clear();
+      render();
+    }
+  }
+
   document.addEventListener('keydown', function (e) {
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
+
+    if (e.key === 'Escape') {
+      closeTopmostLayer();
+      return;
+    }
+
     if (isTextInputElement(e.target)) return;
 
     switch (e.key) {
@@ -2067,6 +2165,10 @@
       case 's':
         e.preventDefault();
         clickHeaderButton('toggle-select-btn');
+        return;
+      case '?':
+        e.preventDefault();
+        toggleHelp();
         return;
     }
   });
