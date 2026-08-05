@@ -805,6 +805,35 @@
     line-height: 1;
   }
 
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    background: transparent;
+  }
+  .chip.tag-chip { color: var(--wine); border: 1px solid var(--wine); }
+  .chip.tag-chip.active { background: var(--wine); color: var(--ivory); }
+  .chip.group-chip { color: var(--ink); border: 1px solid var(--sage); }
+  .chip.group-chip.active { background: var(--sage); color: var(--ink); }
+  .chip-empty {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+  .field-explain {
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    margin: 0 0 6px;
+  }
+
   .card-credentials {
     display: flex;
     flex-direction: column;
@@ -945,12 +974,16 @@
       <input id="new-title" type="text" placeholder="表示タイトル" required>
     </div>
     <div class="field">
-      <label for="new-tags">タグ(カンマ区切り)</label>
-      <input id="new-tags" type="text" placeholder="design, reference">
+      <label>タグ</label>
+      <p class="field-explain">タグ＝複数付けられる横断ラベル</p>
+      <div class="chip-list" id="new-tags-chips"></div>
+      <input id="new-tags-text" type="text" placeholder="新しいタグ(カンマ区切りで複数可)">
     </div>
     <div class="field">
-      <label for="new-group">グループ</label>
-      <input id="new-group" type="text" list="group-list" placeholder="仕事">
+      <label>グループ</label>
+      <p class="field-explain">グループ＝1つだけ選べる置き場所</p>
+      <div class="chip-list" id="new-group-chips"></div>
+      <input id="new-group-text" type="text" placeholder="新しいグループ名">
       <datalist id="group-list"></datalist>
     </div>
     <div class="field">
@@ -1488,6 +1521,7 @@
     renderSelectionBar();
     renderSections();
     refreshGroupDatalist();
+    refreshAddFormChipPickers();
     if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
 
     var selectBtn = document.getElementById('toggle-select-btn');
@@ -1498,6 +1532,42 @@
   function refreshGroupDatalist() {
     var datalist = document.getElementById('group-list');
     datalist.innerHTML = getGroups().map(function (g) { return '<option value="' + escapeHtml(g) + '">'; }).join('');
+  }
+
+  /* ---------- タグ/グループ チップピッカー(共通) ---------- */
+
+  function chipButtonHtml(value, isActive, extraClass) {
+    return '<button type="button" class="chip ' + extraClass + (isActive ? ' active' : '') + '" data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</button>';
+  }
+
+  // タグは複数選択。selectedTagsはSet<string>で、クリックのたびにトグルしてonChangeを呼ぶ。
+  function renderTagChipList(containerEl, selectedTags, onChange) {
+    var tags = getTags();
+    containerEl.innerHTML = tags.length
+      ? tags.map(function (t) { return chipButtonHtml(t, selectedTags.has(t), 'tag-chip'); }).join('')
+      : '<p class="chip-empty">タグがまだありません</p>';
+    containerEl.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-value');
+        if (selectedTags.has(val)) selectedTags.delete(val); else selectedTags.add(val);
+        onChange();
+      });
+    });
+  }
+
+  // グループは単一選択。selectedGroupGetterは現在値を返す関数、onSelectは新しい値(選び直しでの解除=null含む)を受け取る。
+  function renderGroupChipList(containerEl, selectedGroupGetter, onSelect) {
+    var groups = getGroups();
+    var current = selectedGroupGetter();
+    containerEl.innerHTML = groups.length
+      ? groups.map(function (g) { return chipButtonHtml(g, current === g, 'group-chip'); }).join('')
+      : '<p class="chip-empty">グループがまだありません</p>';
+    containerEl.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var val = btn.getAttribute('data-value');
+        onSelect(current === val ? null : val);
+      });
+    });
   }
 
   function renderFilterIndicator() {
@@ -2133,6 +2203,29 @@
   var addForm = document.getElementById('add-form');
   var newUrlInput = document.getElementById('new-url');
   var newTitleInput = document.getElementById('new-title');
+  var newTagsChipsEl = document.getElementById('new-tags-chips');
+  var newTagsTextInput = document.getElementById('new-tags-text');
+  var newGroupChipsEl = document.getElementById('new-group-chips');
+  var newGroupTextInput = document.getElementById('new-group-text');
+  var addFormSelectedTags = new Set();
+  var addFormSelectedGroup = null;
+
+  function refreshAddFormChipPickers() {
+    renderTagChipList(newTagsChipsEl, addFormSelectedTags, refreshAddFormChipPickers);
+    renderGroupChipList(newGroupChipsEl, function () { return addFormSelectedGroup; }, function (val) {
+      addFormSelectedGroup = val;
+      if (val !== null) newGroupTextInput.value = '';
+      refreshAddFormChipPickers();
+    });
+  }
+
+  // 新規グループ欄に文字を入力したら、既存チップの単一選択は自動解除する(グループは単一値であるという制約をUI上でも保つ)
+  newGroupTextInput.addEventListener('input', function () {
+    if (newGroupTextInput.value.trim() === '') return;
+    if (addFormSelectedGroup === null) return;
+    addFormSelectedGroup = null;
+    refreshAddFormChipPickers();
+  });
 
   document.getElementById('toggle-add-btn').addEventListener('click', function () {
     addPanel.hidden = !addPanel.hidden;
@@ -2157,8 +2250,9 @@
     }
 
     var title = newTitleInput.value.trim() || deriveTentativeTitle(url, scheme);
-    var tags = parseTags(document.getElementById('new-tags').value);
-    var group = document.getElementById('new-group').value.trim() || null;
+    var tags = Array.from(new Set(Array.from(addFormSelectedTags).concat(parseTags(newTagsTextInput.value))));
+    var newGroupTyped = newGroupTextInput.value.trim();
+    var group = newGroupTyped || addFormSelectedGroup;
     var loginId = document.getElementById('new-login-id').value.trim() || null;
     var loginPassword = document.getElementById('new-login-password').value || null;
     var memo = document.getElementById('new-memo').value.trim() ? document.getElementById('new-memo').value : null;
@@ -2180,6 +2274,8 @@
 
     saveData(bookmarks);
     addForm.reset();
+    addFormSelectedTags.clear();
+    addFormSelectedGroup = null;
     addPanel.hidden = true;
     render();
   });
