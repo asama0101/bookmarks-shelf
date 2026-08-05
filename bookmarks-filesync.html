@@ -753,14 +753,6 @@
   .card-title a { color: var(--ink); text-decoration: none; }
   .card-title a:hover { text-decoration: underline; }
 
-  .card-url {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--ink-soft);
-    overflow-wrap: anywhere;
-    margin: 0;
-  }
-
   .card-tags {
     display: flex;
     flex-wrap: wrap;
@@ -1986,7 +1978,6 @@
             '<div class="seal">' + iconHtml + '</div>' +
             '<div class="card-title-wrap">' +
               '<h3 class="card-title"><a href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
-              '<p class="card-url">' + escapeHtml(b.url) + '</p>' +
             '</div>' +
           '</div>' +
           (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
