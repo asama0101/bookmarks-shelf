@@ -15,6 +15,7 @@
     --wine: #7A2E36;
     --sage: #B7C4B4;
     --shadow: rgba(27, 53, 56, 0.16);
+    --header-h: 74px;
 
     --font-display: "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
     --font-body: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -166,7 +167,7 @@
     border-bottom: 1px solid var(--sage);
     padding: 18px 24px;
     position: sticky;
-    top: 64px;
+    top: var(--header-h);
     z-index: 5;
   }
   .help-panel[hidden] { display: none; }
@@ -301,6 +302,10 @@
   }
   .selection-bar .btn-quiet:hover { background: rgba(90, 59, 12, 0.12); }
 
+  .selection-bar .chip-list { margin-bottom: 0; }
+  .selection-bar .chip { border: 1px solid var(--amber-ink); color: var(--amber-ink); }
+  .selection-bar .chip.active { background: var(--amber-ink); color: var(--ivory); }
+
   /* ---------- レイアウト ---------- */
 
   .layout {
@@ -321,8 +326,8 @@
   @media (min-width: 761px) {
     .sidebar {
       position: sticky;
-      top: 64px;
-      max-height: calc(100vh - 64px);
+      top: var(--header-h);
+      max-height: calc(100vh - var(--header-h));
       overflow-y: auto;
     }
   }
@@ -887,13 +892,13 @@
       <input id="new-title" type="text" placeholder="表示タイトル" required>
     </div>
     <div class="field">
-      <label>タグ</label>
+      <label for="new-tags-text">タグ</label>
       <p class="field-explain">タグ＝複数付けられる横断ラベル</p>
       <div class="chip-list" id="new-tags-chips"></div>
       <input id="new-tags-text" type="text" placeholder="新しいタグ(カンマ区切りで複数可)">
     </div>
     <div class="field">
-      <label>グループ</label>
+      <label for="new-group-text">グループ</label>
       <p class="field-explain">グループ＝1つだけ選べる置き場所</p>
       <div class="chip-list" id="new-group-chips"></div>
       <input id="new-group-text" type="text" placeholder="新しいグループ名">
@@ -1224,6 +1229,14 @@
     }
     // リネーム中のグループが他の操作で消滅した場合、編集状態を閉じる
     if (state.editingGroup !== null && getGroups().indexOf(state.editingGroup) === -1) state.editingGroup = null;
+    // 一括グループ割り当てチップ・編集フォーム・追加フォームで選択中のグループが消滅した場合も同様に解除する
+    if (assignSelectedGroup !== null && getGroups().indexOf(assignSelectedGroup) === -1) assignSelectedGroup = null;
+    if (editFormSelectedGroup !== null && getGroups().indexOf(editFormSelectedGroup) === -1) editFormSelectedGroup = null;
+    if (addFormSelectedGroup !== null && getGroups().indexOf(addFormSelectedGroup) === -1) addFormSelectedGroup = null;
+    // 追加フォームで選択中のタグのうち、削除等で消滅したタグを除去する
+    addFormSelectedTags.forEach(function (t) {
+      if (getTags().indexOf(t) === -1) addFormSelectedTags.delete(t);
+    });
 
     renderTagNav();
     renderGroupNav();
@@ -1236,6 +1249,15 @@
     var selectBtn = document.getElementById('toggle-select-btn');
     selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
     selectBtn.classList.toggle('active', state.selectMode);
+
+    syncHeaderHeight();
+  }
+
+  // ヘッダーの実際の高さ(フィルタ表示行の有無・折り返しで変動する)をCSSカスタムプロパティに反映し、
+  // sticky なサイドバー/ヘルプパネルの上端オフセットを常に正しい値に保つ
+  function syncHeaderHeight() {
+    var header = document.querySelector('.app-header');
+    if (header) document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
   }
 
   /* ---------- タグ/グループ チップピッカー(共通) ---------- */
@@ -1858,8 +1880,8 @@
           '<form class="edit-form" data-edit-form>' +
             '<div class="field"><label for="edit-url">URL</label><input id="edit-url" type="text" name="url" value="' + escapeHtml(b.url) + '" required></div>' +
             '<div class="field"><label for="edit-title">タイトル</label><input id="edit-title" type="text" name="title" value="' + escapeHtml(b.title) + '" required></div>' +
-            '<div class="field"><label>タグ</label><p class="field-explain">タグ＝複数付けられる横断ラベル</p><div class="chip-list" id="edit-tags-chips"></div><input id="edit-tags-text" type="text" placeholder="新しいタグ(カンマ区切りで複数可)"></div>' +
-            '<div class="field"><label>グループ</label><p class="field-explain">グループ＝1つだけ選べる置き場所</p><div class="chip-list" id="edit-group-chips"></div><input id="edit-group-text" type="text" placeholder="新しいグループ名"></div>' +
+            '<div class="field"><label for="edit-tags-text">タグ</label><p class="field-explain">タグ＝複数付けられる横断ラベル</p><div class="chip-list" id="edit-tags-chips"></div><input id="edit-tags-text" type="text" placeholder="新しいタグ(カンマ区切りで複数可)"></div>' +
+            '<div class="field"><label for="edit-group-text">グループ</label><p class="field-explain">グループ＝1つだけ選べる置き場所</p><div class="chip-list" id="edit-group-chips"></div><input id="edit-group-text" type="text" placeholder="新しいグループ名"></div>' +
             '<div class="field"><label for="edit-login-id">ログインID</label><input id="edit-login-id" type="text" name="loginId" value="' + escapeHtml(b.loginId || '') + '"></div>' +
             '<div class="field">' +
               '<label for="edit-login-password">パスワード</label>' +
@@ -2324,6 +2346,9 @@
     focusedCardId = card.getAttribute('data-card-id');
     applyRovingTabindex();
   });
+
+  // app-headerがflex-wrapで2段組みになる幅変化はrender()を経由しないため、resize時にも同期する
+  window.addEventListener('resize', syncHeaderHeight);
 
   render();
 })();
