@@ -857,7 +857,8 @@
 
 <section class="selection-bar" id="selection-bar" hidden>
   <span class="count" id="selection-count"></span>
-  <input type="text" id="group-name-input" list="group-list" placeholder="グループ名">
+  <div class="chip-list" id="assign-group-chips"></div>
+  <input type="text" id="group-name-input" placeholder="新しいグループ名">
   <button class="btn btn-amber" id="group-assign-btn" type="button">グループにまとめる</button>
   <button class="btn-quiet" id="group-clear-btn" type="button">グループ解除</button>
   <button class="btn-quiet" id="selection-clear-btn" type="button">選択解除</button>
@@ -884,7 +885,6 @@
       <p class="field-explain">グループ＝1つだけ選べる置き場所</p>
       <div class="chip-list" id="new-group-chips"></div>
       <input id="new-group-text" type="text" placeholder="新しいグループ名">
-      <datalist id="group-list"></datalist>
     </div>
     <div class="field">
       <button class="btn btn-amber" type="submit">保存</button>
@@ -1218,18 +1218,12 @@
     renderFilterIndicator();
     renderSelectionBar();
     renderSections();
-    refreshGroupDatalist();
     refreshAddFormChipPickers();
     if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
 
     var selectBtn = document.getElementById('toggle-select-btn');
     selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
     selectBtn.classList.toggle('active', state.selectMode);
-  }
-
-  function refreshGroupDatalist() {
-    var datalist = document.getElementById('group-list');
-    datalist.innerHTML = getGroups().map(function (g) { return '<option value="' + escapeHtml(g) + '">'; }).join('');
   }
 
   /* ---------- タグ/グループ チップピッカー(共通) ---------- */
@@ -1343,6 +1337,18 @@
 
   /* ---------- 選択・グループ化 ---------- */
 
+  var assignSelectedGroup = null;
+
+  function refreshAssignGroupChips() {
+    var chipsEl = document.getElementById('assign-group-chips');
+    var textInput = document.getElementById('group-name-input');
+    renderGroupChipList(chipsEl, function () { return assignSelectedGroup; }, function (val) {
+      assignSelectedGroup = val;
+      if (val !== null) textInput.value = '';
+      refreshAssignGroupChips();
+    });
+  }
+
   function renderSelectionBar() {
     var bar = document.getElementById('selection-bar');
     bar.hidden = !state.selectMode;
@@ -1353,11 +1359,15 @@
     document.getElementById('group-assign-btn').disabled = count === 0;
     document.getElementById('group-clear-btn').disabled = count === 0;
     document.getElementById('selection-clear-btn').disabled = count === 0;
+    refreshAssignGroupChips();
   }
 
   document.getElementById('toggle-select-btn').addEventListener('click', function () {
     state.selectMode = !state.selectMode;
-    if (!state.selectMode) state.selectedIds.clear();
+    if (!state.selectMode) {
+      state.selectedIds.clear();
+      assignSelectedGroup = null;
+    }
     render();
   });
 
@@ -1376,12 +1386,21 @@
     render();
   });
 
+  document.getElementById('group-name-input').addEventListener('input', function () {
+    var input = document.getElementById('group-name-input');
+    if (input.value.trim() === '') return;
+    if (assignSelectedGroup === null) return;
+    assignSelectedGroup = null;
+    refreshAssignGroupChips();
+  });
+
   document.getElementById('group-assign-btn').addEventListener('click', function () {
     if (!state.selectedIds.size) return;
     var input = document.getElementById('group-name-input');
-    var name = input.value.trim();
+    var typed = input.value.trim();
+    var name = typed || assignSelectedGroup;
     if (!name) {
-      alert('グループ名を入力してください。');
+      alert('グループ名を入力するか、既存のグループを選択してください。');
       return;
     }
     var go = getGroupOrderForName(name);
@@ -1391,6 +1410,7 @@
     saveData(bookmarks);
     state.selectedIds.clear();
     input.value = '';
+    assignSelectedGroup = null;
     render();
   });
 
