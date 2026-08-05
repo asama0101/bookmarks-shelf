@@ -58,6 +58,9 @@
     padding: 18px 24px;
     background: var(--ink);
     color: var(--ivory);
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
 
   .brand {
@@ -163,7 +166,7 @@
     border-bottom: 1px solid var(--sage);
     padding: 18px 24px;
     position: sticky;
-    top: 0;
+    top: 64px;
     z-index: 5;
   }
   .help-panel[hidden] { display: none; }
@@ -313,6 +316,15 @@
     color: var(--ivory);
     padding: 20px 16px 40px;
     min-height: 100%;
+  }
+
+  @media (min-width: 761px) {
+    .sidebar {
+      position: sticky;
+      top: 64px;
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+    }
   }
 
   .sidebar h2 {
