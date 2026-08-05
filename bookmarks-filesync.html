@@ -776,6 +776,35 @@
   .tag-stamp:nth-of-type(even) { transform: rotate(1.2deg); }
   .tag-stamp.active { background: var(--wine); color: var(--ivory); }
 
+  .filter-indicator {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex-basis: 100%;
+  }
+  .filter-indicator:empty { display: none; }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--ivory);
+  }
+  .filter-chip.tag-filter-chip { color: var(--wine); border: 1px solid var(--wine); }
+  .filter-chip.group-filter-chip { color: var(--ink); border: 1px solid var(--sage); }
+  .filter-chip button {
+    background: none;
+    border: none;
+    color: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+
   .card-credentials {
     display: flex;
     flex-direction: column;
@@ -872,6 +901,7 @@
     <button class="btn btn-ghost" id="import-btn" type="button" disabled>インポート</button>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
   </div>
+  <div class="filter-indicator" id="filter-indicator"></div>
 </header>
 
 <div class="full-message" id="unsupported-screen" hidden>
@@ -1454,6 +1484,7 @@
 
     renderTagNav();
     renderGroupNav();
+    renderFilterIndicator();
     renderSelectionBar();
     renderSections();
     refreshGroupDatalist();
@@ -1468,6 +1499,31 @@
     var datalist = document.getElementById('group-list');
     datalist.innerHTML = getGroups().map(function (g) { return '<option value="' + escapeHtml(g) + '">'; }).join('');
   }
+
+  function renderFilterIndicator() {
+    var el = document.getElementById('filter-indicator');
+    var chips = '';
+    if (state.tag !== null) {
+      chips += '<span class="filter-chip tag-filter-chip">タグ: ' + escapeHtml(state.tag) +
+        '<button type="button" data-action="clear-tag-filter" aria-label="タグ絞り込みを解除">&times;</button></span>';
+    }
+    if (state.group !== null) {
+      var label = state.group === '' ? '未分類' : state.group;
+      chips += '<span class="filter-chip group-filter-chip">グループ: ' + escapeHtml(label) +
+        '<button type="button" data-action="clear-group-filter" aria-label="グループ絞り込みを解除">&times;</button></span>';
+    }
+    el.innerHTML = chips;
+  }
+
+  document.getElementById('filter-indicator').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    if (action === 'clear-tag-filter') state.tag = null;
+    else if (action === 'clear-group-filter') state.group = null;
+    else return;
+    render();
+  });
 
   function renderTagNav() {
     var nav = document.getElementById('tag-nav');
