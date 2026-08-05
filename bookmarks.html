@@ -1826,8 +1826,8 @@
           '<form class="edit-form" data-edit-form>' +
             '<div class="field"><label for="edit-url">URL</label><input id="edit-url" type="text" name="url" value="' + escapeHtml(b.url) + '" required></div>' +
             '<div class="field"><label for="edit-title">タイトル</label><input id="edit-title" type="text" name="title" value="' + escapeHtml(b.title) + '" required></div>' +
-            '<div class="field"><label for="edit-tags">タグ(カンマ区切り)</label><input id="edit-tags" type="text" name="tags" value="' + escapeHtml((b.tags || []).join(', ')) + '"></div>' +
-            '<div class="field"><label for="edit-group">グループ</label><input id="edit-group" type="text" name="group" value="' + escapeHtml(b.group || '') + '" list="group-list"></div>' +
+            '<div class="field"><label>タグ</label><p class="field-explain">タグ＝複数付けられる横断ラベル</p><div class="chip-list" id="edit-tags-chips"></div><input id="edit-tags-text" type="text" placeholder="新しいタグ(カンマ区切りで複数可)"></div>' +
+            '<div class="field"><label>グループ</label><p class="field-explain">グループ＝1つだけ選べる置き場所</p><div class="chip-list" id="edit-group-chips"></div><input id="edit-group-text" type="text" placeholder="新しいグループ名"></div>' +
             '<div class="field"><label for="edit-login-id">ログインID</label><input id="edit-login-id" type="text" name="loginId" value="' + escapeHtml(b.loginId || '') + '"></div>' +
             '<div class="field">' +
               '<label for="edit-login-password">パスワード</label>' +
@@ -1848,9 +1848,37 @@
     );
   }
 
+  var editFormSelectedTags = new Set();
+  var editFormSelectedGroup = null;
+
+  function refreshEditFormChipPickers() {
+    var tagsChipsEl = document.getElementById('edit-tags-chips');
+    var groupChipsEl = document.getElementById('edit-group-chips');
+    var groupTextInput = document.getElementById('edit-group-text');
+    if (!tagsChipsEl || !groupChipsEl) return; // 編集フォームが閉じている間は対象要素が存在しない
+    renderTagChipList(tagsChipsEl, editFormSelectedTags, refreshEditFormChipPickers);
+    renderGroupChipList(groupChipsEl, function () { return editFormSelectedGroup; }, function (val) {
+      editFormSelectedGroup = val;
+      if (val !== null) groupTextInput.value = '';
+      refreshEditFormChipPickers();
+    });
+  }
+
   function bindEditCardEvents(card, b) {
     var form = card.querySelector('[data-edit-form]');
     var cancelBtn = card.querySelector('[data-action="cancel-edit"]');
+    var groupTextInput = document.getElementById('edit-group-text');
+
+    editFormSelectedTags = new Set(b.tags || []);
+    editFormSelectedGroup = b.group || null;
+    refreshEditFormChipPickers();
+
+    groupTextInput.addEventListener('input', function () {
+      if (groupTextInput.value.trim() === '') return;
+      if (editFormSelectedGroup === null) return;
+      editFormSelectedGroup = null;
+      refreshEditFormChipPickers();
+    });
 
     cancelBtn.addEventListener('click', function () {
       state.editingId = null;
@@ -1869,8 +1897,10 @@
       b.scheme = scheme;
       b.domain = deriveDomain(url, scheme);
       b.title = form.title.value.trim() || deriveTentativeTitle(url, scheme);
-      b.tags = parseTags(form.tags.value);
-      var newGroup = form.group.value.trim() || null;
+      var tagsTextInput = document.getElementById('edit-tags-text');
+      b.tags = Array.from(new Set(Array.from(editFormSelectedTags).concat(parseTags(tagsTextInput.value))));
+      var groupTyped = groupTextInput.value.trim();
+      var newGroup = groupTyped || editFormSelectedGroup;
       if (newGroup !== b.group) {
         b.group = newGroup;
         b.groupOrder = getGroupOrderForName(newGroup);
