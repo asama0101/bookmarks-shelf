@@ -73,14 +73,20 @@ Each file's script is a single IIFE with these layers, in order:
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
-   also propagate the target group's `groupOrder` onto the moved bookmark. Group sections themselves
-   are also draggable via a grip icon on each section header (`.group-section-grip`), reordering the
-   groups via `moveGroupSection()`, which renumbers `groupOrder` across every bookmark in every group.
-   Because both card drags and section drags land on the same `.group-section` drop target, a
-   module-scoped `dragKind` ('card' | 'section' | null) set on each `dragstart` disambiguates which
-   drop handler branch to run (`dataTransfer.getData()` cannot be read during `dragover`, so this
-   can't be determined from `dataTransfer` alone). The 未分類 pseudo-section has no grip and is never
-   a valid group-reorder drop target — it always renders last.
+   also propagate the target group's `groupOrder` onto the moved bookmark. Group section headers
+   themselves show only a title and count — reordering and renaming groups is not done on the section
+   header, it's done in the **グループ管理 (group management) modal** (`#group-manage-overlay`,
+   opened via the "管理" button next to the "グループ" sidebar heading), which lists every group name
+   as a row supporting both drag-and-drop and up/down buttons (`moveGroupStep()`), both funneling into
+   `moveGroupSection()`, which renumbers `groupOrder` across every bookmark in every group. Renaming
+   (previously inline on the section header) also lives in this modal, toggled per-row via
+   `state.editingGroup`. The modal's row drag-and-drop uses its own module-scoped `manageDraggedGroup`
+   variable — separate from card drag-and-drop — since the modal and the card grid never overlap in
+   the DOM, so no shared disambiguation variable (like the old `dragKind`) is needed. The modal hooks
+   into the same `closeTopmostLayer()` Escape-key layering chain as the help panel and add/edit forms
+   (help panel → group management modal → edit/add forms → select mode), and a keydown-listener guard
+   suppresses other global single-letter shortcuts while it's open. The 未分類 pseudo-section is never
+   listed in the modal and is never a valid group-reorder target — it always renders last.
 
 ## Data model
 
@@ -92,8 +98,8 @@ Each bookmark:
   tool, not an oversight.
 - `group` is a plain string or `null` (ungrouped); groups are not a separate entity, just a value
   bookmarks share.
-- `order` is a manual sort index, only meaningful when the sort mode is `manual` (the other modes,
-  `title-asc`/`title-desc`, ignore it).
+- `order` is a manual sort index; cards within a group are always displayed in `order` sequence
+  (there is no sort-mode selector — manual drag-to-reorder is the only ordering).
 - `groupOrder` is a manual sort index for the group *section itself* (which group's section appears
   before which), denormalized the same way `group` is: every bookmark sharing a `group` value is
   expected to carry the same `groupOrder`. Every code path that sets `b.group` must also set

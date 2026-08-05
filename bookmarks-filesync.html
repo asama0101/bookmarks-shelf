@@ -432,28 +432,6 @@
   }
   .sidebar li button.active .count { opacity: 0.85; }
 
-  .sort-row {
-    margin-top: 24px;
-  }
-  .sort-row label {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    color: var(--amber);
-    display: block;
-    margin-bottom: 6px;
-  }
-  .sort-row select {
-    width: 100%;
-    padding: 6px 8px;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    border-radius: 4px;
-    border: 1px solid var(--ink-soft);
-    background: var(--ivory);
-    color: var(--ink);
-  }
-
   .main {
     flex: 1;
     padding: 24px;
@@ -548,9 +526,111 @@
   }
   .group-rename-form .btn, .group-rename-form .btn-quiet { padding: 4px 10px; font-size: 0.75rem; }
 
-  .group-section.dragging { opacity: 0.5; }
-  .group-section.section-drop-before { box-shadow: 0 -3px 0 var(--amber); }
-  .group-section.section-drop-after { box-shadow: 0 3px 0 var(--amber); }
+  /* ---------- グループ管理モーダル ---------- */
+
+  .sidebar-heading-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 20px 0 8px;
+  }
+  .sidebar-heading-row h2 { margin: 0; }
+  .sidebar-heading-row:first-child { margin-top: 0; }
+
+  .group-manage-open-btn {
+    background: transparent;
+    border: 1px solid var(--ink-soft);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .group-manage-open-btn:hover { background: var(--ink); color: var(--ivory); }
+
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(27, 53, 56, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 20;
+  }
+  .modal-overlay[hidden] { display: none; }
+
+  .modal {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 20px 24px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .modal-header h2 {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    margin: 0;
+  }
+  .modal-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    line-height: 1;
+    color: var(--ink-soft);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .modal-close-btn:hover { color: var(--ink); background: rgba(27, 53, 56, 0.08); }
+
+  .group-manage-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .group-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--sage);
+    border-radius: 6px;
+    background: rgba(27, 53, 56, 0.03);
+  }
+  .group-manage-row.dragging { opacity: 0.5; }
+  .group-manage-row.drop-before { box-shadow: 0 -3px 0 var(--amber); }
+  .group-manage-row.drop-after { box-shadow: 0 3px 0 var(--amber); }
+
+  .group-manage-name {
+    flex: 1 1 auto;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .group-manage-empty {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
 
   .group-section-empty {
     font-family: var(--font-mono);
@@ -877,7 +957,7 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
+    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
@@ -895,17 +975,11 @@
     <h2>タグ</h2>
     <ul id="tag-nav"></ul>
 
-    <h2>グループ</h2>
-    <ul id="group-nav"></ul>
-
-    <div class="sort-row">
-      <label for="sort-select">並べ替え</label>
-      <select id="sort-select">
-        <option value="manual">手動(ドラッグで並べ替え)</option>
-        <option value="title-asc">タイトル(昇順)</option>
-        <option value="title-desc">タイトル(降順)</option>
-      </select>
+    <div class="sidebar-heading-row">
+      <h2>グループ</h2>
+      <button type="button" class="group-manage-open-btn" id="group-manage-open-btn" aria-label="グループを管理">管理</button>
     </div>
+    <ul id="group-nav"></ul>
   </aside>
 
   <main class="main">
@@ -917,6 +991,17 @@
 <footer class="data-controls">
   <span>データは接続したJSONファイルに直接保存されます(Chrome/Edge限定・File System Access API使用)。</span>
 </footer>
+
+<div class="modal-overlay" id="group-manage-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="group-manage-title">
+    <div class="modal-header">
+      <h2 id="group-manage-title">グループ管理</h2>
+      <button type="button" class="modal-close-btn" id="group-manage-close-btn" aria-label="閉じる">&times;</button>
+    </div>
+    <ul class="group-manage-list" id="group-manage-list"></ul>
+    <p class="group-manage-empty" id="group-manage-empty" hidden>グループがありません。ブックマークをグループにまとめると、ここに表示されます。</p>
+  </div>
+</div>
 
 <template id="icon-file">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2h9l5 5v15H6V2z" stroke="#3E5457" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 2v5h5" stroke="#3E5457" stroke-width="1.5" stroke-linejoin="round"/></svg>
@@ -936,17 +1021,11 @@
     search: '',
     tag: null,
     group: null,
-    sort: 'manual',
     editingId: null,
     editingGroup: null,
     selectMode: false,
     selectedIds: new Set()
   };
-
-  // ドラッグ中の対象を判別するためのクロージャ変数。dragover中はdataTransfer.getData()が読めない(ブラウザ仕様)ため、
-  // カードのドラッグとグループ区画自体のドラッグを区別するのにここを参照する。
-  var dragKind = null; // 'card' | 'section' | null
-  var draggedGroupKey = null;
 
   var bookmarks = [];
   var fileHandle = null;
@@ -1082,6 +1161,7 @@
     document.getElementById('reconnect-row').hidden = true; // 直前の再接続案内が残らないようにリセットする
     document.getElementById('connect-message').textContent = DEFAULT_CONNECT_MESSAGE; // 直前のエラーメッセージが残らないようにリセットする
     document.getElementById('add-panel').hidden = true;
+    closeGroupManageModal(); // オーバーレイを閉じるだけでなくstate.editingGroupも一緒にクリアする
     document.getElementById('selection-bar').hidden = true;
     document.getElementById('file-status').textContent = '未接続';
     document.getElementById('disconnect-btn').hidden = true;
@@ -1341,12 +1421,7 @@
 
   function sortItems(items) {
     return items.slice().sort(function (a, b) {
-      switch (state.sort) {
-        case 'title-asc': return (a.title || '').localeCompare(b.title || '');
-        case 'title-desc': return (b.title || '').localeCompare(a.title || '');
-        case 'manual':
-        default: return (a.order || 0) - (b.order || 0);
-      }
+      return (a.order || 0) - (b.order || 0);
     });
   }
 
@@ -1385,6 +1460,7 @@
     renderSelectionBar();
     renderSections();
     refreshGroupDatalist();
+    if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
 
     var selectBtn = document.getElementById('toggle-select-btn');
     selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
@@ -1499,30 +1575,12 @@
 
   /* ---------- グループ区画の描画(常に全グループ+未分類を並行表示) ---------- */
 
-  // 未分類は実体を持たない疑似グループのため、リネーム・並べ替えの対象外(グリップ・矢印・鉛筆ボタンいずれも出さない)。
-  function renderGroupSectionHeader(key, count, isFirst, isLast) {
-    if (key === UNGROUPED) {
-      return '<div class="group-section-header">' +
-        '<h2 class="group-section-title">未分類</h2>' +
-        '<span class="group-section-count">' + count + ' 件</span>' +
-      '</div>';
-    }
-    if (state.editingGroup === key) {
-      return '<div class="group-section-header">' +
-        '<form class="group-rename-form" data-group-rename-form data-group="' + escapeHtml(key) + '">' +
-          '<input type="text" class="group-rename-input" name="groupName" value="' + escapeHtml(key) + '" required>' +
-          '<button type="submit" class="btn btn-amber">保存</button>' +
-          '<button type="button" class="btn-quiet" data-action="cancel-group-rename">キャンセル</button>' +
-        '</form>' +
-        '<span class="group-section-count">' + count + ' 件</span>' +
-      '</div>';
-    }
+  // グループ名の並べ替え・リネームはグループ管理モーダル(#group-manage-overlay)に集約したため、
+  // 区画ヘッダーはタイトルと件数のみを表示する(未分類も名前付きグループも同じ形)。
+  function renderGroupSectionHeader(key, count) {
+    var title = key === UNGROUPED ? '未分類' : escapeHtml(key);
     return '<div class="group-section-header">' +
-      '<span class="group-section-grip" draggable="true" data-group-key="' + escapeHtml(key) + '" aria-hidden="true">&#10021;</span>' +
-      '<button type="button" class="group-order-btn" data-action="move-group-up" data-group="' + escapeHtml(key) + '" aria-label="' + escapeHtml(key) + 'を上へ移動"' + (isFirst ? ' disabled' : '') + '>&#9650;</button>' +
-      '<button type="button" class="group-order-btn" data-action="move-group-down" data-group="' + escapeHtml(key) + '" aria-label="' + escapeHtml(key) + 'を下へ移動"' + (isLast ? ' disabled' : '') + '>&#9660;</button>' +
-      '<h2 class="group-section-title">' + escapeHtml(key) + '</h2>' +
-      '<button type="button" class="group-edit-btn" data-action="edit-group" data-group="' + escapeHtml(key) + '" aria-label="' + escapeHtml(key) + 'の名前を変更">&#9998;</button>' +
+      '<h2 class="group-section-title">' + title + '</h2>' +
       '<span class="group-section-count">' + count + ' 件</span>' +
     '</div>';
   }
@@ -1548,18 +1606,15 @@
           '</div>'
         : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
 
-      var groupIdx = groupNames.indexOf(key); // 未分類はgroupNamesに含まれないため-1
       return (
         '<section class="group-section" data-group="' + escapeHtml(key || '') + '">' +
-          renderGroupSectionHeader(key, items.length, groupIdx === 0, groupIdx === groupNames.length - 1) +
+          renderGroupSectionHeader(key, items.length) +
           body +
         '</section>'
       );
     }).join('');
 
     bindGroupSectionDragEvents(container);
-    bindGroupRenameEvents(container);
-    bindGroupOrderButtons(container);
 
     // カード内イベントの割り当て
     bookmarks.forEach(function (b) {
@@ -1621,88 +1676,100 @@
     if (hadCardFocus && rovingTarget && state.editingId === null) rovingTarget.focus();
   }
 
-  // グループ区画自体へのドロップ: カードのドロップ(空欄部分 = そのグループの末尾へ移動)と、
-  // 区画ヘッダーのグリップによるグループ並べ替えドロップを dragKind で分岐する。
+  // グループ区画自体へのドロップ: 空欄部分にドロップされたカードをそのグループの末尾へ移動する
   function bindGroupSectionDragEvents(container) {
     container.querySelectorAll('.group-section').forEach(function (section) {
       var groupValue = section.getAttribute('data-group') || null;
       section.addEventListener('dragover', function (e) {
-        if (dragKind === 'section') {
-          if (groupValue === UNGROUPED || draggedGroupKey === groupValue) return;
-          e.preventDefault();
-          var rect = section.getBoundingClientRect();
-          var after = (e.clientY - rect.top) > rect.height / 2;
-          section.classList.toggle('section-drop-after', after);
-          section.classList.toggle('section-drop-before', !after);
-        } else {
-          e.preventDefault();
-          section.classList.add('drag-target');
-        }
+        e.preventDefault();
+        section.classList.add('drag-target');
       });
       section.addEventListener('dragleave', function (e) {
-        if (e.target === section) section.classList.remove('drag-target', 'section-drop-before', 'section-drop-after');
+        if (e.target === section) section.classList.remove('drag-target');
       });
       section.addEventListener('drop', function (e) {
         e.preventDefault();
-        section.classList.remove('drag-target', 'section-drop-before', 'section-drop-after');
-        // ドロップ成立時点で即座にグローバル状態を確定的にクリアする(ドラッグ元のグリップがrender()で
-        // DOMから消え、dragendが発火しないブラウザ挙動に当たっても状態が残留しないようにするため)。
-        var kind = dragKind, key = draggedGroupKey;
-        dragKind = null;
-        draggedGroupKey = null;
-        if (kind === 'section') {
-          if (groupValue === UNGROUPED || key === groupValue) return;
-          var rect = section.getBoundingClientRect();
-          var after = (e.clientY - rect.top) > rect.height / 2;
-          moveGroupSection(key, groupValue, after);
-        } else {
-          var draggedId = e.dataTransfer.getData('text/plain');
-          moveToGroupEnd(draggedId, groupValue);
-        }
-      });
-    });
-
-    // グループ区画ヘッダーの掴みハンドル: グループ並べ替えのドラッグ元
-    container.querySelectorAll('.group-section-grip').forEach(function (grip) {
-      var section = grip.closest('.group-section');
-      var key = grip.getAttribute('data-group-key') || null;
-      grip.addEventListener('dragstart', function (e) {
-        dragKind = 'section';
-        draggedGroupKey = key;
-        e.dataTransfer.setData('text/plain', 'group');
-        e.dataTransfer.effectAllowed = 'move';
-        section.classList.add('dragging');
-      });
-      grip.addEventListener('dragend', function () {
-        dragKind = null;
-        draggedGroupKey = null;
-        section.classList.remove('dragging');
-        container.querySelectorAll('.group-section').forEach(function (s) {
-          s.classList.remove('section-drop-before', 'section-drop-after', 'drag-target');
-        });
+        section.classList.remove('drag-target');
+        var draggedId = e.dataTransfer.getData('text/plain');
+        draggedCardId = null; // render()でドラッグ元カードがDOMから消えdragendが発火しない場合に備え、確定的にクリアする
+        moveToGroupEnd(draggedId, groupValue);
       });
     });
   }
 
-  // グループ見出し: リネーム鉛筆ボタン・キャンセル・リネームフォームsubmitのイベント割り当て
-  // グループ見出しの上下矢印ボタン: 隣接するグループと1つ入れ替える
-  function bindGroupOrderButtons(container) {
-    container.querySelectorAll('[data-action="move-group-up"]').forEach(function (btn) {
+  /* ---------- グループ管理モーダル ---------- */
+
+  var groupManageOverlay = document.getElementById('group-manage-overlay');
+  var groupManageList = document.getElementById('group-manage-list');
+  var groupManageEmpty = document.getElementById('group-manage-empty');
+  // モーダル内リストの並べ替えドラッグ元。カードのドラッグとはDOM上重ならないため、専用のローカル変数で足りる。
+  var manageDraggedGroup = null;
+
+  var groupManageOpenBtn = document.getElementById('group-manage-open-btn');
+  groupManageOpenBtn.addEventListener('click', openGroupManageModal);
+  document.getElementById('group-manage-close-btn').addEventListener('click', closeGroupManageModal);
+  groupManageOverlay.addEventListener('click', function (e) {
+    if (e.target === groupManageOverlay) closeGroupManageModal(); // 背景クリックで閉じる
+  });
+
+  function openGroupManageModal() {
+    groupManageOverlay.hidden = false;
+    renderGroupManageModal();
+    var firstRow = groupManageList.querySelector('.group-manage-row[draggable="true"]');
+    (firstRow || document.getElementById('group-manage-close-btn')).focus();
+  }
+
+  function closeGroupManageModal() {
+    groupManageOverlay.hidden = true;
+    state.editingGroup = null; // 閉じたら行内のリネームフォームも一緒に閉じておく
+    groupManageOpenBtn.focus(); // 開いた場所へフォーカスを戻す
+  }
+
+  // グループ管理モーダルのリスト全体を再描画する。render()から、モーダルが開いている間だけ呼ばれる。
+  function renderGroupManageModal() {
+    var names = getGroups();
+    groupManageEmpty.hidden = names.length !== 0;
+    groupManageList.innerHTML = names.map(function (name, i) {
+      return renderGroupManageRow(name, i, names.length);
+    }).join('');
+    bindGroupManageRowButtons();
+    bindGroupManageRowDragEvents();
+  }
+
+  function renderGroupManageRow(name, idx, total) {
+    if (state.editingGroup === name) {
+      return '<li class="group-manage-row" data-group="' + escapeHtml(name) + '">' +
+        '<form class="group-rename-form" data-group-rename-form data-group="' + escapeHtml(name) + '">' +
+          '<input type="text" class="group-rename-input" name="groupName" value="' + escapeHtml(name) + '" required>' +
+          '<button type="submit" class="btn btn-amber">保存</button>' +
+          '<button type="button" class="btn-quiet" data-action="cancel-group-rename">キャンセル</button>' +
+        '</form>' +
+      '</li>';
+    }
+    return '<li class="group-manage-row" draggable="true" tabindex="-1" data-group="' + escapeHtml(name) + '">' +
+      '<span class="group-section-grip" aria-hidden="true">&#10021;</span>' +
+      '<button type="button" class="group-order-btn" data-action="move-group-up" data-group="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を上へ移動"' + (idx === 0 ? ' disabled' : '') + '>&#9650;</button>' +
+      '<button type="button" class="group-order-btn" data-action="move-group-down" data-group="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を下へ移動"' + (idx === total - 1 ? ' disabled' : '') + '>&#9660;</button>' +
+      '<span class="group-manage-name">' + escapeHtml(name) + '</span>' +
+      '<button type="button" class="group-edit-btn" data-action="edit-group" data-group="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'の名前を変更">&#9998;</button>' +
+    '</li>';
+  }
+
+  // 行の上下ボタン・鉛筆(リネーム開始)・リネームフォームのsubmit/キャンセルを割り当てる
+  function bindGroupManageRowButtons() {
+    groupManageList.querySelectorAll('[data-action="move-group-up"]').forEach(function (btn) {
       btn.addEventListener('click', function () { moveGroupStep(btn.getAttribute('data-group'), -1); });
     });
-    container.querySelectorAll('[data-action="move-group-down"]').forEach(function (btn) {
+    groupManageList.querySelectorAll('[data-action="move-group-down"]').forEach(function (btn) {
       btn.addEventListener('click', function () { moveGroupStep(btn.getAttribute('data-group'), 1); });
     });
-  }
-
-  function bindGroupRenameEvents(container) {
-    container.querySelectorAll('[data-action="edit-group"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { state.editingGroup = btn.getAttribute('data-group'); render(); });
+    groupManageList.querySelectorAll('[data-action="edit-group"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { state.editingGroup = btn.getAttribute('data-group'); renderGroupManageModal(); });
     });
-    container.querySelectorAll('[data-action="cancel-group-rename"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { state.editingGroup = null; render(); });
+    groupManageList.querySelectorAll('[data-action="cancel-group-rename"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { state.editingGroup = null; renderGroupManageModal(); });
     });
-    container.querySelectorAll('[data-group-rename-form]').forEach(function (form) {
+    groupManageList.querySelectorAll('[data-group-rename-form]').forEach(function (form) {
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var oldName = form.getAttribute('data-group');
@@ -1719,49 +1786,86 @@
           if (state.group === oldName) state.group = newName;
         }
         state.editingGroup = null;
-        render();
+        render(); // group-sections側の見出しも変わるため、モーダルだけでなく全体を再描画する
+      });
+    });
+  }
+
+  // 行の掴みドラッグによる並べ替えを割り当てる
+  // ドラッグ&ドロップによる並べ替えの共通処理(カードの並べ替え・グループ管理モーダルの行並べ替えで共用)。
+  // el: ドラッグ対象要素, key: elの識別子, opts:
+  //   getDragged/setDragged: ドラッグ中の識別子を保持するアクセサ(呼び出し元のモジュール変数を橋渡しする)
+  //   payload: dataTransferへ書き込む文字列(省略時はkeyそのもの。URL状の値になり得る場合は固定文字列を渡す)
+  //   stopPropagation: 親要素の別のドロップハンドラと二重処理させたくない場合はtrue
+  //   dropEffect: dragover時にdataTransfer.dropEffectへ設定する値(省略可)
+  //   onDrop(draggedKey, key, after): ドロップ確定時に呼ばれる並べ替え処理
+  function bindDragReorder(el, key, opts) {
+    el.addEventListener('dragstart', function (e) {
+      opts.setDragged(key);
+      e.dataTransfer.setData('text/plain', opts.payload !== undefined ? opts.payload : key);
+      e.dataTransfer.effectAllowed = 'move';
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', function () {
+      opts.setDragged(null);
+      el.classList.remove('dragging', 'drop-before', 'drop-after');
+    });
+    el.addEventListener('dragover', function (e) {
+      if (!opts.getDragged()) return;
+      e.preventDefault();
+      if (opts.stopPropagation) e.stopPropagation(); // 自己ホバー時も親のドロップハンドラへ伝播させない
+      if (opts.getDragged() === key) {
+        el.classList.remove('drop-before', 'drop-after'); // 自分自身の上では位置インジケータを出さない
+        return;
+      }
+      if (opts.dropEffect) e.dataTransfer.dropEffect = opts.dropEffect;
+      var rect = el.getBoundingClientRect();
+      var after = (e.clientY - rect.top) > rect.height / 2;
+      el.classList.toggle('drop-after', after);
+      el.classList.toggle('drop-before', !after);
+    });
+    el.addEventListener('dragleave', function (e) {
+      // 子要素間の移動ではdragleaveが子要素側にしか発火しないため、要素の外へ実際に出たかをrelatedTargetで判定する
+      if (!el.contains(e.relatedTarget)) el.classList.remove('drop-before', 'drop-after');
+    });
+    el.addEventListener('drop', function (e) {
+      e.preventDefault();
+      if (opts.stopPropagation) e.stopPropagation();
+      el.classList.remove('drop-before', 'drop-after');
+      var draggedKey = opts.getDragged();
+      opts.setDragged(null);
+      if (!draggedKey || draggedKey === key) return;
+      var rect = el.getBoundingClientRect();
+      var after = (e.clientY - rect.top) > rect.height / 2;
+      opts.onDrop(draggedKey, key, after);
+    });
+  }
+
+  function bindGroupManageRowDragEvents() {
+    groupManageList.querySelectorAll('.group-manage-row[draggable="true"]').forEach(function (row) {
+      bindDragReorder(row, row.getAttribute('data-group'), {
+        getDragged: function () { return manageDraggedGroup; },
+        setDragged: function (v) { manageDraggedGroup = v; },
+        payload: 'group', // 値自体は未使用(dropはmanageDraggedGroupを参照)。URL状のグループ名がドロップ失敗時に誤ナビゲーションを起こさないよう固定文字列にする
+        onDrop: function (draggedKey, targetKey, after) {
+          moveGroupSection(draggedKey, targetKey, after); // render()経由でrenderGroupManageModal()も再描画される
+        }
       });
     });
   }
 
   /* ---------- ドラッグ&ドロップ(並べ替え・グループ間移動) ---------- */
 
+  var draggedCardId = null;
+
   function bindDragEvents(card, b) {
     card.setAttribute('draggable', 'true');
-
-    card.addEventListener('dragstart', function (e) {
-      dragKind = 'card';
-      e.dataTransfer.setData('text/plain', b.id);
-      e.dataTransfer.effectAllowed = 'move';
-      card.classList.add('dragging');
-    });
-    card.addEventListener('dragend', function () {
-      dragKind = null;
-      card.classList.remove('dragging');
-      card.classList.remove('drop-before', 'drop-after');
-    });
-    card.addEventListener('dragover', function (e) {
-      if (dragKind === 'section') return; // グループ区画自体のドラッグ中はカードをドロップ先にしない
-      e.preventDefault();
-      e.stopPropagation(); // グループ区画側のドロップと二重処理にならないようにする
-      e.dataTransfer.dropEffect = 'move';
-      var rect = card.getBoundingClientRect();
-      var after = (e.clientY - rect.top) > rect.height / 2;
-      card.classList.toggle('drop-after', after);
-      card.classList.toggle('drop-before', !after);
-    });
-    card.addEventListener('dragleave', function () {
-      card.classList.remove('drop-before', 'drop-after');
-    });
-    card.addEventListener('drop', function (e) {
-      if (dragKind === 'section') return;
-      e.preventDefault();
-      e.stopPropagation();
-      var rect = card.getBoundingClientRect();
-      var after = (e.clientY - rect.top) > rect.height / 2;
-      card.classList.remove('drop-before', 'drop-after');
-      var draggedId = e.dataTransfer.getData('text/plain');
-      moveBookmark(draggedId, b.id, after);
+    bindDragReorder(card, b.id, {
+      getDragged: function () { return draggedCardId; },
+      setDragged: function (v) { draggedCardId = v; },
+      stopPropagation: true, // グループ区画側のドロップと二重処理にならないようにする
+      dropEffect: 'move',
+      onDrop: function (draggedId, targetId, after) { moveBookmark(draggedId, targetId, after); }
     });
   }
 
@@ -2035,12 +2139,6 @@
     render();
   });
 
-  document.getElementById('sort-select').value = state.sort;
-  document.getElementById('sort-select').addEventListener('change', function (e) {
-    state.sort = e.target.value;
-    render();
-  });
-
   /* ---------- エクスポート / インポート(接続ファイルとは別の手動バックアップ用) ---------- */
 
   document.getElementById('export-btn').addEventListener('click', function () {
@@ -2100,7 +2198,6 @@
   /* ---------- キーボード操作 ---------- */
 
   // 入力中のタイピングをショートカットが奪わないようにするための判定。
-  // select も対象に含めるのは、並べ替えセレクトで文字キーによる項目ジャンプが効かなくなるのを避けるため。
   function isTextInputElement(el) {
     if (!el) return false;
     var tag = el.tagName;
@@ -2121,18 +2218,28 @@
     helpPanel.hidden = !helpPanel.hidden;
   }
 
-  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → 各種フォーム(編集・追加・グループ名リネーム) → 選択モード。
-  // フォームは3種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。
+  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
+  // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。
   function closeTopmostLayer() {
     if (!helpPanel.hidden) {
       helpPanel.hidden = true;
       return;
     }
 
+    // グループ管理モーダルが開いている場合、内側のリネームフォーム→モーダル本体の順に1段階ずつ閉じる
+    if (!groupManageOverlay.hidden) {
+      if (state.editingGroup !== null) {
+        state.editingGroup = null;
+        renderGroupManageModal();
+        return;
+      }
+      closeGroupManageModal();
+      return;
+    }
+
     var closedEditingCard = state.editingId !== null;
     var closedForm = false;
     if (state.editingId !== null) { state.editingId = null; closedForm = true; }
-    if (state.editingGroup !== null) { state.editingGroup = null; closedForm = true; }
     if (!addPanel.hidden) { addPanel.hidden = true; closedForm = true; }
     if (closedForm) {
       render();
@@ -2237,6 +2344,8 @@
       closeTopmostLayer();
       return;
     }
+
+    if (!groupManageOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
 
     if (isTextInputElement(e.target)) return;
 
