@@ -70,14 +70,24 @@ Each file's script is a single IIFE with these layers, in order:
    `b.group`'s own `null`-for-ungrouped convention — do not conflate the two. `render()` clears
    `state.tag`/`state.group`/`state.editingGroup` back to their default when the thing they
    reference (a tag, a named group, a renamed-away group) disappears, so a stale filter or open
-   rename form can't get stuck showing nothing.
+   rename form can't get stuck showing nothing. The sidebar itself is a two-tab switcher
+   (`state.sidebarTab`, `'tag'` or `'group'`, toggled by `switchSidebarTab()`) showing only the
+   タグ or グループ nav list at a time — switching tabs never touches `state.tag`/`state.group`,
+   so a filter set on the hidden tab stays active (and still shows in the filter indicator).
+   A "すべて解除" button next to the tabs clears both `state.tag` and `state.group` at once and is
+   visible whenever either filter is active (`updateSidebarClearButtons()`, run on every
+   `render()`) — clearing a single axis is still done via its nav button (re-click to toggle off)
+   or the corresponding × on the filter indicator chip, same as before tabs existed. The `t`/`g`
+   keyboard shortcuts switch to the corresponding tab before focusing its list, even when that tab
+   isn't currently shown.
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
    also propagate the target group's `groupOrder` onto the moved bookmark. Group section headers
    themselves show only a title and count — reordering and renaming groups is not done on the section
    header, it's done in the **グループ管理 (group management) modal** (`#group-manage-overlay`,
-   opened via the "管理" button next to the "グループ" sidebar heading), which lists every group name
+   opened via the "管理" button, which lives inside the サイドバー's グループ tab panel and is
+   only reachable while that tab is active), which lists every group name
    as a row supporting both drag-and-drop and up/down buttons (`moveGroupStep()`), both funneling into
    `moveGroupSection()`, which renumbers `groupOrder` across every bookmark in every group. Renaming
    (previously inline on the section header) also lives in this modal, toggled per-row via
