@@ -88,7 +88,7 @@
 
   .search-slot input {
     width: 100%;
-    padding: 10px 14px;
+    padding: 10px 34px 10px 14px;
     border-radius: 999px;
     border: none;
     background: var(--ivory);
@@ -98,6 +98,23 @@
   }
 
   .search-slot input::placeholder { color: var(--ink-soft); opacity: 0.7; }
+
+  .search-clear-btn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+
+  .search-clear-btn:hover { color: var(--ink); }
 
   .header-actions {
     display: flex;
@@ -937,6 +954,7 @@
   <div class="brand"><span class="brand-mark">&#10022;</span>bookmark-shelf</div>
   <div class="search-slot">
     <input id="search-input" type="text" placeholder="タイトル・URL・タグで検索..." aria-label="ブックマークを検索">
+    <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="検索をクリア" hidden>&times;</button>
   </div>
   <div class="header-actions">
     <span class="file-status" id="file-status">未接続</span>
@@ -2368,10 +2386,28 @@
 
   /* ---------- 検索・ソート ---------- */
 
-  document.getElementById('search-input').addEventListener('input', function (e) {
+  var searchInput = document.getElementById('search-input');
+  var searchClearBtn = document.getElementById('search-clear-btn');
+
+  function updateSearchClearVisibility() {
+    searchClearBtn.hidden = !state.search;
+  }
+
+  searchInput.addEventListener('input', function (e) {
     state.search = e.target.value;
+    updateSearchClearVisibility();
     render();
   });
+
+  searchClearBtn.addEventListener('click', function () {
+    state.search = '';
+    searchInput.value = '';
+    updateSearchClearVisibility();
+    searchInput.focus();
+    render();
+  });
+
+  updateSearchClearVisibility();
 
   /* ---------- エクスポート / インポート(接続ファイルとは別の手動バックアップ用) ---------- */
 
