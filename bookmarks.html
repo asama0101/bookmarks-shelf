@@ -349,14 +349,44 @@
     }
   }
 
-  .sidebar h2 {
+  .sidebar-tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid rgba(245, 241, 230, 0.15);
+  }
+
+  .sidebar-tab {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    color: var(--ivory);
+    opacity: 0.6;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+  .sidebar-tab:hover { opacity: 0.85; }
+  .sidebar-tab[aria-selected="true"] { opacity: 1; font-weight: 700; }
+  #sidebar-tab-tag[aria-selected="true"] { border-bottom-color: var(--wine); }
+  #sidebar-tab-group[aria-selected="true"] { border-bottom-color: var(--sage); }
+
+  .sidebar-clear-all-btn {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--amber);
     font-family: var(--font-mono);
     font-size: 0.72rem;
-    letter-spacing: 0.1em;
-    color: var(--amber);
-    margin: 20px 0 8px;
+    cursor: pointer;
+    padding: 4px 6px;
+    white-space: nowrap;
   }
-  .sidebar h2:first-child { margin-top: 0; }
+  .sidebar-clear-all-btn:hover { text-decoration: underline; }
 
   .sidebar ul {
     list-style: none;
@@ -491,14 +521,12 @@
 
   /* ---------- グループ管理モーダル ---------- */
 
-  .sidebar-heading-row {
+  .sidebar-panel-actions {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin: 20px 0 8px;
+    justify-content: flex-end;
+    margin-bottom: 8px;
   }
-  .sidebar-heading-row h2 { margin: 0; }
-  .sidebar-heading-row:first-child { margin-top: 0; }
 
   .group-manage-open-btn {
     background: transparent;
@@ -958,8 +986,8 @@
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
     <dt><kbd>s</kbd></dt><dd>カード一覧へフォーカス</dd>
-    <dt><kbd>t</kbd></dt><dd>タグ絞り込みナビへフォーカス</dd>
-    <dt><kbd>g</kbd></dt><dd>グループ絞り込みナビへフォーカス</dd>
+    <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
+    <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
     <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
     <dt><kbd>p</kbd></dt><dd>フォーカス中のカードのパスワードをコピー</dd>
   </dl>
@@ -967,14 +995,22 @@
 
 <div class="layout">
   <aside class="sidebar">
-    <h2>タグ</h2>
-    <ul id="tag-nav"></ul>
-
-    <div class="sidebar-heading-row">
-      <h2>グループ</h2>
-      <button type="button" class="group-manage-open-btn" id="group-manage-open-btn" aria-label="グループを管理">管理</button>
+    <div class="sidebar-tabs" role="tablist">
+      <button type="button" class="sidebar-tab" id="sidebar-tab-tag" role="tab" aria-selected="true" aria-controls="tag-nav-panel">タグ</button>
+      <button type="button" class="sidebar-tab" id="sidebar-tab-group" role="tab" aria-selected="false" aria-controls="group-nav-panel">グループ</button>
+      <button type="button" class="sidebar-clear-all-btn" id="clear-all-filters-btn" hidden>すべて解除</button>
     </div>
-    <ul id="group-nav"></ul>
+
+    <div class="sidebar-panel" id="tag-nav-panel" role="tabpanel">
+      <ul id="tag-nav"></ul>
+    </div>
+
+    <div class="sidebar-panel" id="group-nav-panel" role="tabpanel" hidden>
+      <div class="sidebar-panel-actions">
+        <button type="button" class="group-manage-open-btn" id="group-manage-open-btn" aria-label="グループを管理">管理</button>
+      </div>
+      <ul id="group-nav"></ul>
+    </div>
   </aside>
 
   <main class="main">
@@ -1020,7 +1056,8 @@
     editingId: null,
     editingGroup: null,
     selectMode: false,
-    selectedIds: new Set()
+    selectedIds: new Set(),
+    sidebarTab: 'tag'
   };
 
   /* ---------- データ層 ---------- */
@@ -1258,6 +1295,7 @@
 
     renderTagNav();
     renderGroupNav();
+    updateSidebarClearButtons();
     renderFilterIndicator();
     renderSelectionBar();
     renderSections();
@@ -1385,6 +1423,19 @@
         render();
       });
     });
+  }
+
+  // サイドバーの「タグ」「グループ」タブ表示を切り替える。フィルタ状態(state.tag/state.group)自体には触れない。
+  function switchSidebarTab(tab) {
+    state.sidebarTab = tab;
+    document.getElementById('tag-nav-panel').hidden = tab !== 'tag';
+    document.getElementById('group-nav-panel').hidden = tab !== 'group';
+    document.getElementById('sidebar-tab-tag').setAttribute('aria-selected', tab === 'tag' ? 'true' : 'false');
+    document.getElementById('sidebar-tab-group').setAttribute('aria-selected', tab === 'group' ? 'true' : 'false');
+  }
+
+  function updateSidebarClearButtons() {
+    document.getElementById('clear-all-filters-btn').hidden = state.tag === null && state.group === null;
   }
 
   /* ---------- 選択・グループ化 ---------- */
@@ -1591,6 +1642,20 @@
       });
     });
   }
+
+  /* ---------- サイドバータブ ---------- */
+
+  document.getElementById('sidebar-tab-tag').addEventListener('click', function () {
+    switchSidebarTab('tag');
+  });
+  document.getElementById('sidebar-tab-group').addEventListener('click', function () {
+    switchSidebarTab('group');
+  });
+  document.getElementById('clear-all-filters-btn').addEventListener('click', function () {
+    state.tag = null;
+    state.group = null;
+    render();
+  });
 
   /* ---------- グループ管理モーダル ---------- */
 
@@ -2239,11 +2304,13 @@
         return true;
       case 't':
         e.preventDefault();
+        switchSidebarTab('tag');
         var firstTagBtn = document.querySelector('#tag-nav button');
         if (firstTagBtn) firstTagBtn.focus();
         return true;
       case 'g':
         e.preventDefault();
+        switchSidebarTab('group');
         var firstGroupBtn = document.querySelector('#group-nav button');
         if (firstGroupBtn) firstGroupBtn.focus();
         return true;
