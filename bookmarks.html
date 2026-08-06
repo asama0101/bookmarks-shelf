@@ -1468,7 +1468,9 @@
     var hadCardFocus = !!(active && active.classList && active.classList.contains('card') && container.contains(active));
     var filtered = getSearchTagFiltered();
     var groupNames = getGroups(); // 名前付きグループ(groupOrder順・ドラッグ&ドロップや矢印ボタンで並べ替え可能) + 最後に未分類
-    var sectionKeys = groupNames.concat([UNGROUPED]);
+    var sectionKeys = state.group !== null
+      ? [state.group === '' ? UNGROUPED : state.group]
+      : groupNames.concat([UNGROUPED]);
 
     document.getElementById('result-count').textContent =
       filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件) — カードを他のグループ区画にドラッグすると移動できます';

@@ -61,15 +61,16 @@ Each file's script is a single IIFE with these layers, in order:
    were skipped rather than silently dropping them.
 4. **Render layer** — `render()` is the single re-render entrypoint, called after every state
    mutation; it rebuilds tag nav, group nav, selection bar, and group sections from scratch via
-   string concatenation (no virtual DOM/diffing). Bookmarks are always grouped into every existing
-   group plus an "未分類" (ungrouped) section shown side-by-side — group membership only affects
-   which section a card renders in, and this layout is unaffected by filtering. `state.tag` and
-   `state.group` (sidebar nav selections) narrow which bookmarks appear *within* those sections;
-   `state.group` uses `null` for "no group filter" and `''` (empty string) for "filter to 未分類",
-   which is a different sentinel from `b.group`'s own `null`-for-ungrouped convention — do not
-   conflate the two. `render()` clears `state.tag`/`state.group`/`state.editingGroup` back to their
-   default when the thing they reference (a tag, a named group, a renamed-away group) disappears,
-   so a stale filter or open rename form can't get stuck showing nothing.
+   string concatenation (no virtual DOM/diffing). With no group filter active, bookmarks are grouped
+   into every existing group plus an "未分類" (ungrouped) section shown side-by-side. When
+   `state.group` is set, `renderSections()` renders only that one section (the selected group, or
+   未分類) instead of the full side-by-side set — `state.tag` still narrows which bookmarks appear
+   *within* the rendered section(s) the same way it always has. `state.group` uses `null` for "no
+   group filter" and `''` (empty string) for "filter to 未分類", which is a different sentinel from
+   `b.group`'s own `null`-for-ungrouped convention — do not conflate the two. `render()` clears
+   `state.tag`/`state.group`/`state.editingGroup` back to their default when the thing they
+   reference (a tag, a named group, a renamed-away group) disappears, so a stale filter or open
+   rename form can't get stuck showing nothing.
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
