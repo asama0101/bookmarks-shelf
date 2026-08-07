@@ -1172,11 +1172,12 @@
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
     <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
-    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
+    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
+    <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
+    <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
-    <dt><kbd>s</kbd></dt><dd>カード一覧へフォーカス</dd>
     <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
     <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
@@ -2878,10 +2879,25 @@
         e.preventDefault();
         toggleHelp();
         return true;
-      case 's':
+      case 'ArrowDown':
+      case 'ArrowRight':
+      case 'ArrowUp':
+      case 'ArrowLeft':
+        // 既にカードにフォーカス中なら、この関数では処理せずhandleCardShortcut側の移動処理に任せる
+        if (e.target.closest('#group-sections .card[tabindex]')) return false;
         e.preventDefault();
-        var focusTarget = document.querySelector('#group-sections .card[tabindex="0"]');
-        if (focusTarget) focusTarget.focus();
+        var arrowTarget = document.querySelector('#group-sections .card[tabindex="0"]');
+        if (arrowTarget) arrowTarget.focus();
+        return true;
+      case 'Home':
+        e.preventDefault();
+        var firstCard = getNavigableCards()[0];
+        if (firstCard) firstCard.focus();
+        return true;
+      case 'End':
+        e.preventDefault();
+        var navCards = getNavigableCards();
+        if (navCards.length) navCards[navCards.length - 1].focus();
         return true;
     }
     return false;
