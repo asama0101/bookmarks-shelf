@@ -623,6 +623,96 @@
     color: var(--ink-soft);
   }
 
+  /* ---------- タグ管理モーダル ---------- */
+
+  .tag-manage-open-btn {
+    background: transparent;
+    border: 1px solid var(--ink-soft);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .tag-manage-open-btn:hover { background: var(--ink); color: var(--ivory); }
+
+  .tag-manage-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tag-manage-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--sage);
+    border-radius: 6px;
+    background: rgba(27, 53, 56, 0.03);
+  }
+
+  .tag-manage-name {
+    flex: 1 1 auto;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tag-manage-empty {
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+
+  .tag-edit-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .tag-edit-btn:hover { color: var(--ink); background: rgba(27, 53, 56, 0.08); }
+
+  .tag-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .tag-delete-btn:hover { color: var(--wine); background: rgba(122, 46, 54, 0.08); }
+
+  .tag-rename-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .tag-rename-input {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 2px 6px;
+    border: 1px solid var(--sage);
+    border-radius: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .tag-rename-form .btn, .tag-rename-form .btn-quiet { padding: 4px 10px; font-size: 0.75rem; }
+
   .group-section-empty {
     font-family: var(--font-mono);
     font-size: 0.8rem;
@@ -980,7 +1070,7 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
+    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
@@ -1002,6 +1092,9 @@
     </div>
 
     <div class="sidebar-panel" id="tag-nav-panel" role="tabpanel">
+      <div class="sidebar-panel-actions">
+        <button type="button" class="tag-manage-open-btn" id="tag-manage-open-btn" aria-label="タグを管理">管理</button>
+      </div>
       <ul id="tag-nav"></ul>
     </div>
 
@@ -1034,6 +1127,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="tag-manage-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tag-manage-title">
+    <div class="modal-header">
+      <h2 id="tag-manage-title">タグ管理</h2>
+      <button type="button" class="modal-close-btn" id="tag-manage-close-btn" aria-label="閉じる">&times;</button>
+    </div>
+    <ul class="tag-manage-list" id="tag-manage-list"></ul>
+    <p class="tag-manage-empty" id="tag-manage-empty" hidden>タグがありません。ブックマークにタグを付けると、ここに表示されます。</p>
+  </div>
+</div>
+
 <template id="icon-file">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 2h9l5 5v15H6V2z" stroke="#3E5457" stroke-width="1.5" stroke-linejoin="round"/><path d="M15 2v5h5" stroke="#3E5457" stroke-width="1.5" stroke-linejoin="round"/></svg>
 </template>
@@ -1055,6 +1159,7 @@
     group: null,
     editingId: null,
     editingGroup: null,
+    editingTag: null,
     selectMode: false,
     selectedIds: new Set(),
     sidebarTab: 'tag'
@@ -1284,6 +1389,8 @@
     }
     // リネーム中のグループが他の操作で消滅した場合、編集状態を閉じる
     if (state.editingGroup !== null && getGroups().indexOf(state.editingGroup) === -1) state.editingGroup = null;
+    // リネーム中のタグが他の操作(削除・別リネームでの合流)で消滅した場合、編集状態を閉じる
+    if (state.editingTag !== null && getTags().indexOf(state.editingTag) === -1) state.editingTag = null;
     // 一括グループ割り当てチップ・編集フォーム・追加フォームで選択中のグループが消滅した場合も同様に解除する
     if (assignSelectedGroup !== null && getGroups().indexOf(assignSelectedGroup) === -1) assignSelectedGroup = null;
     if (editFormSelectedGroup !== null && getGroups().indexOf(editFormSelectedGroup) === -1) editFormSelectedGroup = null;
@@ -1301,6 +1408,7 @@
     renderSections();
     refreshAddFormChipPickers();
     if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
+    if (!tagManageOverlay.hidden) renderTagManageModal(); // モーダルが開いている間は常に最新の一覧を反映する
 
     var selectBtn = document.getElementById('toggle-select-btn');
     selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
@@ -1814,6 +1922,104 @@
     });
   }
 
+  /* ---------- タグ管理モーダル ---------- */
+
+  var tagManageOverlay = document.getElementById('tag-manage-overlay');
+  var tagManageList = document.getElementById('tag-manage-list');
+  var tagManageEmpty = document.getElementById('tag-manage-empty');
+
+  var tagManageOpenBtn = document.getElementById('tag-manage-open-btn');
+  tagManageOpenBtn.addEventListener('click', openTagManageModal);
+  document.getElementById('tag-manage-close-btn').addEventListener('click', closeTagManageModal);
+  tagManageOverlay.addEventListener('click', function (e) {
+    if (e.target === tagManageOverlay) closeTagManageModal(); // 背景クリックで閉じる
+  });
+
+  function openTagManageModal() {
+    tagManageOverlay.hidden = false;
+    renderTagManageModal();
+    var firstRow = tagManageList.querySelector('.tag-manage-row');
+    (firstRow || document.getElementById('tag-manage-close-btn')).focus();
+  }
+
+  function closeTagManageModal() {
+    tagManageOverlay.hidden = true;
+    state.editingTag = null; // 閉じたら行内のリネームフォームも一緒に閉じておく
+    tagManageOpenBtn.focus(); // 開いた場所へフォーカスを戻す
+  }
+
+  // タグ管理モーダルのリスト全体を再描画する。render()から、モーダルが開いている間だけ呼ばれる。
+  function renderTagManageModal() {
+    var names = getTags();
+    tagManageEmpty.hidden = names.length !== 0;
+    tagManageList.innerHTML = names.map(function (name) {
+      return renderTagManageRow(name);
+    }).join('');
+    bindTagManageRowButtons();
+  }
+
+  function renderTagManageRow(name) {
+    if (state.editingTag === name) {
+      return '<li class="tag-manage-row" data-tag="' + escapeHtml(name) + '">' +
+        '<form class="tag-rename-form" data-tag-rename-form data-tag="' + escapeHtml(name) + '">' +
+          '<input type="text" class="tag-rename-input" name="newTagName" value="' + escapeHtml(name) + '" required>' +
+          '<button type="submit" class="btn btn-amber">保存</button>' +
+          '<button type="button" class="btn-quiet" data-action="cancel-tag-rename">キャンセル</button>' +
+        '</form>' +
+      '</li>';
+    }
+    return '<li class="tag-manage-row" tabindex="-1" data-tag="' + escapeHtml(name) + '">' +
+      '<span class="tag-manage-name">' + escapeHtml(name) + '</span>' +
+      '<button type="button" class="tag-edit-btn" data-action="edit-tag" data-tag="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'の名前を変更">&#9998;</button>' +
+      '<button type="button" class="tag-delete-btn" data-action="delete-tag" data-tag="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を削除">&#10005;</button>' +
+    '</li>';
+  }
+
+  // 行の鉛筆(リネーム開始)・削除ボタン・リネームフォームのsubmit/キャンセルを割り当てる
+  function bindTagManageRowButtons() {
+    tagManageList.querySelectorAll('[data-action="edit-tag"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { state.editingTag = btn.getAttribute('data-tag'); renderTagManageModal(); });
+    });
+    tagManageList.querySelectorAll('[data-action="cancel-tag-rename"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { state.editingTag = null; renderTagManageModal(); });
+    });
+    tagManageList.querySelectorAll('[data-action="delete-tag"]').forEach(function (btn) {
+      btn.addEventListener('click', function () { deleteTag(btn.getAttribute('data-tag')); });
+    });
+    tagManageList.querySelectorAll('[data-tag-rename-form]').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var oldName = form.getAttribute('data-tag');
+        var newName = form.newTagName.value.trim();
+        if (newName && newName !== oldName) {
+          bookmarks.forEach(function (b) {
+            var tags = b.tags || [];
+            if (tags.indexOf(oldName) === -1) return;
+            var renamed = tags.map(function (t) { return t === oldName ? newName : t; });
+            b.tags = renamed.filter(function (t, i) { return renamed.indexOf(t) === i; }); // 同一ブックマーク内での重複除去(改名先が既存の別タグと衝突した場合)
+          });
+          saveData(bookmarks);
+          if (state.tag === oldName) state.tag = newName;
+        }
+        state.editingTag = null;
+        render(); // カードのタグ表示・タグナビも変わるため、モーダルだけでなく全体を再描画する
+      });
+    });
+  }
+
+  // 指定タグを持つ全ブックマークから、そのタグだけを取り除く(ブックマーク自体は削除しない)
+  function deleteTag(name) {
+    var count = bookmarks.filter(function (b) { return (b.tags || []).indexOf(name) !== -1; }).length;
+    if (count === 0) return;
+    if (!confirm('タグ「' + name + '」を全てのブックマーク(' + count + '件)から削除しますか?')) return;
+    bookmarks.forEach(function (b) {
+      if (!b.tags) return;
+      b.tags = b.tags.filter(function (t) { return t !== name; });
+    });
+    saveData(bookmarks);
+    render();
+  }
+
   /* ---------- ドラッグ&ドロップ(並べ替え・グループ間移動) ---------- */
 
   var draggedCardId = null;
@@ -2270,6 +2476,17 @@
       return;
     }
 
+    // タグ管理モーダルが開いている場合も同様に、内側のリネームフォーム→モーダル本体の順に1段階ずつ閉じる
+    if (!tagManageOverlay.hidden) {
+      if (state.editingTag !== null) {
+        state.editingTag = null;
+        renderTagManageModal();
+        return;
+      }
+      closeTagManageModal();
+      return;
+    }
+
     var closedEditingCard = state.editingId !== null;
     var closedForm = false;
     if (state.editingId !== null) { state.editingId = null; closedForm = true; }
@@ -2381,6 +2598,7 @@
     }
 
     if (!groupManageOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
+    if (!tagManageOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
 
     if (isTextInputElement(e.target)) return;
 
