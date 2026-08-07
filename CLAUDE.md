@@ -106,6 +106,21 @@ Each file's script is a single IIFE with these layers, in order:
    while it's open. The 未分類 pseudo-section is never listed in the modal and is never a valid
    group-reorder target — it always renders last.
 
+   The header's **「+追加」button** (`#toggle-add-btn`) doubles as a drop target for URLs dragged in
+   from elsewhere (another tab, the address bar) — there is no dedicated function like a
+   `quickAddBookmark()`; the drop handler reuses the existing add panel/add form as-is.
+   `extractUrlFromDrop()` pulls a URL string out of the dropped `DataTransfer` (preferring
+   `text/uri-list`, falling back to `text/plain`); if it's a URL `classifyUrl()` accepts, the drop
+   handler opens the add panel, sets the URL field, and manually dispatches an `input` event so the
+   existing title auto-fill (the `newUrlInput` `input` listener) runs — it does not save immediately,
+   saving still happens only when the user presses the existing "保存" button. While a card is being
+   reordered (`draggedCardId` is set), the button's `dragover` handler bails out by reading that same
+   card-reorder module variable, even though the button itself sits outside the card grid — this
+   cross-purpose reuse of `draggedCardId` is intentional but non-obvious. In
+   `bookmarks-filesync.html`, this is also disabled while no file is connected (`fileHandle` is
+   `null`) — both `dragover` and `drop` check `fileHandle` explicitly rather than relying on the
+   button's `disabled` attribute alone.
+
    A parallel **タグ管理 (tag management) modal** (`#tag-manage-overlay`) exists for tags, opened via
    the "管理" button inside the サイドバー's タグ tab panel (the same structure as the group modal's
    "管理" button in its グループ tab panel — each tab has its own management entry point). Unlike the
