@@ -328,7 +328,7 @@
         '</form>' +
       '</li>';
     }
-    return '<li class="tag-manage-row" data-tag="' + escapeHtml(name) + '">' +
+    return '<li class="tag-manage-row" tabindex="-1" data-tag="' + escapeHtml(name) + '">' +
       '<span class="tag-manage-name">' + escapeHtml(name) + '</span>' +
       '<button type="button" class="tag-edit-btn" data-action="edit-tag" data-tag="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'の名前を変更">&#9998;</button>' +
       '<button type="button" class="tag-delete-btn" data-action="delete-tag" data-tag="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を削除">&#10005;</button>' +
@@ -763,7 +763,7 @@ Task 1 Step 2 と全く同じ内容に変更する:
         '</form>' +
       '</li>';
     }
-    return '<li class="tag-manage-row" data-tag="' + escapeHtml(name) + '">' +
+    return '<li class="tag-manage-row" tabindex="-1" data-tag="' + escapeHtml(name) + '">' +
       '<span class="tag-manage-name">' + escapeHtml(name) + '</span>' +
       '<button type="button" class="tag-edit-btn" data-action="edit-tag" data-tag="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'の名前を変更">&#9998;</button>' +
       '<button type="button" class="tag-delete-btn" data-action="delete-tag" data-tag="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を削除">&#10005;</button>' +
