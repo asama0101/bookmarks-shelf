@@ -1096,16 +1096,16 @@
 <div class="layout" id="layout" hidden>
   <aside class="sidebar">
     <div class="sidebar-tabs" role="tablist">
-      <button type="button" class="sidebar-tab" id="sidebar-tab-tag" role="tab" aria-selected="true" aria-controls="tag-nav-panel">タグ</button>
-      <button type="button" class="sidebar-tab" id="sidebar-tab-group" role="tab" aria-selected="false" aria-controls="group-nav-panel">グループ</button>
+      <button type="button" class="sidebar-tab" id="sidebar-tab-tag" role="tab" aria-selected="false" aria-controls="tag-nav-panel">タグ</button>
+      <button type="button" class="sidebar-tab" id="sidebar-tab-group" role="tab" aria-selected="true" aria-controls="group-nav-panel">グループ</button>
       <button type="button" class="sidebar-clear-all-btn" id="clear-all-filters-btn" hidden>すべて解除</button>
     </div>
 
-    <div class="sidebar-panel" id="tag-nav-panel" role="tabpanel">
+    <div class="sidebar-panel" id="tag-nav-panel" role="tabpanel" hidden>
       <ul id="tag-nav"></ul>
     </div>
 
-    <div class="sidebar-panel" id="group-nav-panel" role="tabpanel" hidden>
+    <div class="sidebar-panel" id="group-nav-panel" role="tabpanel">
       <div class="sidebar-panel-actions">
         <button type="button" class="group-manage-open-btn" id="group-manage-open-btn" aria-label="グループを管理">管理</button>
       </div>
@@ -1156,7 +1156,7 @@
     editingGroup: null,
     selectMode: false,
     selectedIds: new Set(),
-    sidebarTab: 'tag'
+    sidebarTab: 'group'
   };
 
   var bookmarks = [];
