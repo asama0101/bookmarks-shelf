@@ -1070,7 +1070,7 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
+    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
@@ -1962,7 +1962,7 @@
     if (state.editingTag === name) {
       return '<li class="tag-manage-row" data-tag="' + escapeHtml(name) + '">' +
         '<form class="tag-rename-form" data-tag-rename-form data-tag="' + escapeHtml(name) + '">' +
-          '<input type="text" class="tag-rename-input" name="tagName" value="' + escapeHtml(name) + '" required>' +
+          '<input type="text" class="tag-rename-input" name="newTagName" value="' + escapeHtml(name) + '" required>' +
           '<button type="submit" class="btn btn-amber">保存</button>' +
           '<button type="button" class="btn-quiet" data-action="cancel-tag-rename">キャンセル</button>' +
         '</form>' +
@@ -1990,7 +1990,7 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var oldName = form.getAttribute('data-tag');
-        var newName = form.tagName.value.trim();
+        var newName = form.newTagName.value.trim();
         if (newName && newName !== oldName) {
           bookmarks.forEach(function (b) {
             var tags = b.tags || [];

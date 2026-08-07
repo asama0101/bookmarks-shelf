@@ -94,10 +94,24 @@ Each file's script is a single IIFE with these layers, in order:
    `state.editingGroup`. The modal's row drag-and-drop uses its own module-scoped `manageDraggedGroup`
    variable — separate from card drag-and-drop — since the modal and the card grid never overlap in
    the DOM, so no shared disambiguation variable (like the old `dragKind`) is needed. The modal hooks
-   into the same `closeTopmostLayer()` Escape-key layering chain as the help panel and add/edit forms
-   (help panel → group management modal → edit/add forms → select mode), and a keydown-listener guard
-   suppresses other global single-letter shortcuts while it's open. The 未分類 pseudo-section is never
-   listed in the modal and is never a valid group-reorder target — it always renders last.
+   into the same `closeTopmostLayer()` Escape-key layering chain as the help panel, the tag management
+   modal, and add/edit forms (help panel → group management modal → tag management modal → edit/add
+   forms → select mode), and a keydown-listener guard suppresses other global single-letter shortcuts
+   while it's open. The 未分類 pseudo-section is never listed in the modal and is never a valid
+   group-reorder target — it always renders last.
+
+   A parallel **タグ管理 (tag management) modal** (`#tag-manage-overlay`) exists for tags, opened via
+   the "管理" button inside the サイドバー's タグ tab panel (the same structure as the group modal's
+   "管理" button in its グループ tab panel — each tab has its own management entry point). Unlike the
+   group modal, it has no reordering — rows are listed via `getTags()` in its existing alphabetical
+   order, since tags have no analog to `groupOrder`. Each row supports renaming (toggled per-row via
+   `state.editingTag`, rendered by `renderTagManageRow()`) and deletion (`deleteTag()`, which prompts a
+   confirm dialog reporting how many bookmarks carry the tag before stripping it — it removes the tag
+   from every bookmark's `tags` array but never deletes the bookmarks themselves). Renaming merges into
+   an existing tag name if the new name collides with one already present elsewhere, and also
+   deduplicates within a single bookmark's own `tags` array if the rename produces a collision there.
+   The modal is wired into the same `closeTopmostLayer()` Escape-key chain described above, immediately
+   after the group management modal and before edit/add forms.
 
 ## Data model
 
