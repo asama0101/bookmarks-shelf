@@ -79,7 +79,13 @@ Each file's script is a single IIFE with these layers, in order:
    `render()`) — clearing a single axis is still done via its nav button (re-click to toggle off)
    or the corresponding × on the filter indicator chip, same as before tabs existed. The `t`/`g`
    keyboard shortcuts switch to the corresponding tab before focusing its list, even when that tab
-   isn't currently shown.
+   isn't currently shown. The default tab on load is グループ (group), not タグ (tag) — this default
+   is expressed in two separate places that must be kept in sync by hand: `state.sidebarTab`'s
+   initial value (`'group'`) and the tab buttons'/panels' hardcoded `aria-selected`/`hidden`
+   attributes in the markup. `switchSidebarTab()` is never called on startup, so nothing reconciles
+   the two automatically — changing only one (e.g. flipping the initial `state.sidebarTab` without
+   also updating the markup, or vice versa) produces a silent bug where the internal state and the
+   on-screen tab disagree.
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
