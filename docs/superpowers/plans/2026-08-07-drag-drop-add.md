@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **2026-08-08 改訂に関する注記:** 本プランのTask 1 Step 3〜4／Task 2 Step 3〜4に書かれている `quickAddBookmark()` による「即時追加」は、最終レビュー指摘（フィルター適用中は追加が成功しても一覧に見えない）を受けてユーザーの意向により「ドロップ時は常に追加パネルを開き、URL欄・タイトル欄を事前入力するだけで即保存はしない」という挙動に変更された。最終的な設計は `docs/superpowers/specs/2026-08-07-drag-drop-add-design.md` の改訂内容（および実際のコード）を正とする。本プランの該当ステップのコードは実装の経緯を示す記録として残すが、`quickAddBookmark()` は最終的に削除されている。
+
 **Goal:** ブラウザの別タブ・アドレスバーからリンクをドラッグし、既存の「+追加」ボタンにドロップするだけで、タグ・グループ・ログイン情報・メモを付けない最小限のブックマークを即座に追加できるようにする（`bookmarks.html` / `bookmarks-filesync.html` の両方）。
 
 **Architecture:** 新規UI要素は追加せず、既存の「+追加」ボタン（`#toggle-add-btn`）に `dragover`/`dragleave`/`drop` リスナーを追加する。新規の独立した共通関数 `quickAddBookmark(url)` と、`DataTransfer` からURL文字列を取り出す `extractUrlFromDrop(dataTransfer)` を軸に実装する。既存のカード並べ替え・グループ移動用ドラッグ&ドロップ（`bindDragReorder`, `bindGroupSectionDragEvents` 等）はDOM上重ならないため衝突しないが、カード並べ替え中の誤反応だけは `draggedCardId` を見て防ぐ。既存の「+追加」ボタンのクリックハンドラ・フルフォームは変更しない。
