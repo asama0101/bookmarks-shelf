@@ -102,7 +102,8 @@ Each file's script is a single IIFE with these layers, in order:
    the DOM, so no shared disambiguation variable (like the old `dragKind`) is needed. The modal hooks
    into the same `closeTopmostLayer()` Escape-key layering chain as the help panel, the tag management
    modal, and add/edit forms (help panel → group management modal → tag management modal → edit/add
-   forms → select mode), and a keydown-listener guard suppresses other global single-letter shortcuts
+   forms → select mode); when none of those layers is open, Escape instead blurs whatever element
+   currently holds keyboard focus rather than doing nothing. A keydown-listener guard suppresses other global single-letter shortcuts
    while it's open. A higher-priority branch pre-empts this whole chain: while `#search-input` is
    focused and `state.search` is non-empty, Escape instead clears the search and refocuses the input
    (`clearSearch()`, mirroring the `#search-clear-btn` click) — but only when the group modal, tag

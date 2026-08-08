@@ -1171,7 +1171,7 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
+    <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じ、何も無ければフォーカスを外す</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
     <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
     <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
@@ -2804,8 +2804,8 @@
     helpPanel.hidden = !helpPanel.hidden;
   }
 
-  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
-  // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。
+  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → タグ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
+  // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。閉じる層が何も無ければ、最後にフォーカスを外す。
   function closeTopmostLayer() {
     if (!helpPanel.hidden) {
       helpPanel.hidden = true;
@@ -2856,7 +2856,7 @@
     }
 
     // 閉じる層が何も無い場合、フォーカスを完全に外して初期状態に戻す
-    if (document.activeElement && document.activeElement !== document.body && typeof document.activeElement.blur === 'function') {
+    if (document.activeElement !== document.body) {
       document.activeElement.blur();
     }
   }
