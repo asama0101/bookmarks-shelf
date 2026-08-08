@@ -2852,6 +2852,12 @@
       state.selectMode = false;
       state.selectedIds.clear();
       render();
+      return;
+    }
+
+    // 閉じる層が何も無い場合、フォーカスを完全に外して初期状態に戻す
+    if (document.activeElement && document.activeElement !== document.body && typeof document.activeElement.blur === 'function') {
+      document.activeElement.blur();
     }
   }
 
