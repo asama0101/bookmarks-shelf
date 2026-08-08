@@ -2550,6 +2550,7 @@
       render();
     }
   }
+
   // タグ/グループナビ内でのボタン間移動(次/前が無ければ何もしない。moveCardFocusと同じ規約)
   function moveNavFocus(btn, direction) {
     var list = btn.closest('ul');
@@ -2664,7 +2665,7 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
 
     if (e.key === 'Escape') {
-      if (e.target === searchInput && state.search && groupManageOverlay.hidden && tagManageOverlay.hidden) {
+      if (e.target === searchInput && state.search && groupManageOverlay.hidden && tagManageOverlay.hidden && helpPanel.hidden) {
         clearSearch();
         return;
       }

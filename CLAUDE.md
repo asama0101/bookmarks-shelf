@@ -103,7 +103,13 @@ Each file's script is a single IIFE with these layers, in order:
    into the same `closeTopmostLayer()` Escape-key layering chain as the help panel, the tag management
    modal, and add/edit forms (help panel → group management modal → tag management modal → edit/add
    forms → select mode), and a keydown-listener guard suppresses other global single-letter shortcuts
-   while it's open. The 未分類 pseudo-section is never listed in the modal and is never a valid
+   while it's open. A higher-priority branch pre-empts this whole chain: while `#search-input` is
+   focused and `state.search` is non-empty, Escape instead clears the search and refocuses the input
+   (`clearSearch()`, mirroring the `#search-clear-btn` click) — but only when the group modal, tag
+   modal, and help panel are all closed; if any of those is open, Escape falls through to
+   `closeTopmostLayer()` as before regardless of search-input focus/content, since none of those
+   layers trap keyboard focus and a backgrounded search input could otherwise steal Escape via Tab.
+   The 未分類 pseudo-section is never listed in the modal and is never a valid
    group-reorder target — it always renders last.
 
    The header's **「+追加」button** (`#toggle-add-btn`) doubles as a drop target for URLs dragged in
