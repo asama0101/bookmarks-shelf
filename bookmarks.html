@@ -136,7 +136,6 @@
     color: var(--amber-ink);
   }
   .btn-amber:hover { background: #eeb857; }
-  #toggle-add-btn.add-btn-drop-target { box-shadow: 0 0 0 3px var(--amber-ink); }
 
   .btn-ghost {
     background: transparent;
@@ -1000,7 +999,7 @@
     <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="検索をクリア" hidden>&times;</button>
   </div>
   <div class="header-actions">
-    <button class="btn btn-amber" id="toggle-add-btn" type="button" title="URLをドラッグ&amp;ドロップして追加パネルを開く">+ 追加</button>
+    <button class="btn btn-amber" id="toggle-add-btn" type="button">+ 追加</button>
     <button class="btn btn-ghost" id="toggle-select-btn" type="button">選択</button>
     <button class="btn btn-ghost" id="export-btn" type="button">エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button">インポート</button>
@@ -2305,44 +2304,6 @@
   document.getElementById('toggle-add-btn').addEventListener('click', function () {
     addPanel.hidden = !addPanel.hidden;
     if (!addPanel.hidden) newUrlInput.focus();
-  });
-
-  /* ---------- 「+追加」ボタンへのURLドラッグ&ドロップ ---------- */
-
-  // ドロップされたDataTransferから実際のURL文字列を取り出す。
-  // ブラウザがリンクをドラッグする際に設定するtext/uri-list(複数行になりうる。
-  // #で始まる行はコメントなので除外し、最初の有効な行を採用)を優先し、無ければtext/plainにフォールバックする。
-  function extractUrlFromDrop(dataTransfer) {
-    var uriList = dataTransfer.getData('text/uri-list');
-    if (uriList) {
-      var lines = uriList.split(/\r?\n/).map(function (l) { return l.trim(); })
-        .filter(function (l) { return l && l.charAt(0) !== '#'; });
-      if (lines.length) return lines[0];
-    }
-    return dataTransfer.getData('text/plain').trim();
-  }
-
-  document.getElementById('toggle-add-btn').addEventListener('dragover', function (e) {
-    if (draggedCardId) return; // カード並べ替え中の誤反応を防ぐ
-    var types = e.dataTransfer.types;
-    if (types.indexOf('text/uri-list') === -1 && types.indexOf('text/plain') === -1) return;
-    e.preventDefault();
-    this.classList.add('add-btn-drop-target');
-  });
-
-  document.getElementById('toggle-add-btn').addEventListener('dragleave', function () {
-    this.classList.remove('add-btn-drop-target');
-  });
-
-  document.getElementById('toggle-add-btn').addEventListener('drop', function (e) {
-    e.preventDefault();
-    this.classList.remove('add-btn-drop-target');
-    var url = extractUrlFromDrop(e.dataTransfer);
-    if (!classifyUrl(url)) return; // URLとして認識できない場合は何もしない
-    addPanel.hidden = false;
-    newUrlInput.value = url;
-    newUrlInput.dispatchEvent(new Event('input')); // 既存のタイトル自動補完(newUrlInputのinputリスナー)を発火させる
-    newUrlInput.focus();
   });
 
   // タイトル未入力時のみ、URLからの仮タイトルで自動補完する
