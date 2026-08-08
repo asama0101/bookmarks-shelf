@@ -1171,12 +1171,13 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
-    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動</dd>
+    <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じ、何も無ければフォーカスを外す</dd>
+    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
+    <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
+    <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
-    <dt><kbd>s</kbd></dt><dd>カード一覧へフォーカス</dd>
     <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
     <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
@@ -2705,19 +2706,22 @@
     searchClearBtn.hidden = !state.search;
   }
 
+  // 検索をクリアして検索欄へフォーカスを戻す。×ボタンのクリック・検索欄フォーカス中のEscの両方から呼ばれる。
+  function clearSearch() {
+    state.search = '';
+    searchInput.value = '';
+    updateSearchClearVisibility();
+    searchInput.focus();
+    render();
+  }
+
   searchInput.addEventListener('input', function (e) {
     state.search = e.target.value;
     updateSearchClearVisibility();
     render();
   });
 
-  searchClearBtn.addEventListener('click', function () {
-    state.search = '';
-    searchInput.value = '';
-    updateSearchClearVisibility();
-    searchInput.focus();
-    render();
-  });
+  searchClearBtn.addEventListener('click', clearSearch);
 
   updateSearchClearVisibility();
 
@@ -2800,8 +2804,8 @@
     helpPanel.hidden = !helpPanel.hidden;
   }
 
-  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
-  // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。
+  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → タグ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
+  // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。閉じる層が何も無ければ、最後にフォーカスを外す。
   function closeTopmostLayer() {
     if (!helpPanel.hidden) {
       helpPanel.hidden = true;
@@ -2848,7 +2852,21 @@
       state.selectMode = false;
       state.selectedIds.clear();
       render();
+      return;
     }
+
+    // 閉じる層が何も無い場合、フォーカスを完全に外して初期状態に戻す
+    if (document.activeElement !== document.body) {
+      document.activeElement.blur();
+    }
+  }
+
+  // タグ/グループナビ内でのボタン間移動(次/前が無ければ何もしない。moveCardFocusと同じ規約)
+  function moveNavFocus(btn, direction) {
+    var list = btn.closest('ul');
+    var buttons = Array.prototype.slice.call(list.querySelectorAll('button'));
+    var next = buttons[buttons.indexOf(btn) + direction];
+    if (next) next.focus();
   }
 
   // カードに依存しないグローバルショートカット。マッチしてハンドリングした場合はtrueを返す。
@@ -2878,10 +2896,31 @@
         e.preventDefault();
         toggleHelp();
         return true;
-      case 's':
+      case 'ArrowDown':
+      case 'ArrowRight':
+      case 'ArrowUp':
+      case 'ArrowLeft':
+        var navBtn = e.target.closest('#tag-nav button, #group-nav button');
+        if (navBtn) {
+          e.preventDefault();
+          moveNavFocus(navBtn, (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1);
+          return true;
+        }
+        // 既にカードにフォーカス中なら、この関数では処理せずhandleCardShortcut側の移動処理に任せる
+        if (e.target.closest('#group-sections .card[tabindex]')) return false;
         e.preventDefault();
-        var focusTarget = document.querySelector('#group-sections .card[tabindex="0"]');
-        if (focusTarget) focusTarget.focus();
+        var arrowTarget = document.querySelector('#group-sections .card[tabindex="0"]');
+        if (arrowTarget) arrowTarget.focus();
+        return true;
+      case 'Home':
+        e.preventDefault();
+        var firstCard = getNavigableCards()[0];
+        if (firstCard) firstCard.focus();
+        return true;
+      case 'End':
+        e.preventDefault();
+        var navCards = getNavigableCards();
+        if (navCards.length) navCards[navCards.length - 1].focus();
         return true;
     }
     return false;
@@ -2936,6 +2975,10 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
 
     if (e.key === 'Escape') {
+      if (e.target === searchInput && state.search && groupManageOverlay.hidden && tagManageOverlay.hidden && helpPanel.hidden) {
+        clearSearch();
+        return;
+      }
       closeTopmostLayer();
       return;
     }
