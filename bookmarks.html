@@ -2664,7 +2664,7 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
 
     if (e.key === 'Escape') {
-      if (e.target === searchInput && state.search) {
+      if (e.target === searchInput && state.search && groupManageOverlay.hidden && tagManageOverlay.hidden) {
         clearSearch();
         return;
       }
