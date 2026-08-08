@@ -1071,7 +1071,7 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>Esc</kbd></dt><dd>ヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
+    <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じる</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
     <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
     <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
@@ -2402,19 +2402,22 @@
     searchClearBtn.hidden = !state.search;
   }
 
+  // 検索をクリアして検索欄へフォーカスを戻す。×ボタンのクリック・検索欄フォーカス中のEscの両方から呼ばれる。
+  function clearSearch() {
+    state.search = '';
+    searchInput.value = '';
+    updateSearchClearVisibility();
+    searchInput.focus();
+    render();
+  }
+
   searchInput.addEventListener('input', function (e) {
     state.search = e.target.value;
     updateSearchClearVisibility();
     render();
   });
 
-  searchClearBtn.addEventListener('click', function () {
-    state.search = '';
-    searchInput.value = '';
-    updateSearchClearVisibility();
-    searchInput.focus();
-    render();
-  });
+  searchClearBtn.addEventListener('click', clearSearch);
 
   updateSearchClearVisibility();
 
@@ -2547,6 +2550,13 @@
       render();
     }
   }
+  // タグ/グループナビ内でのボタン間移動(次/前が無ければ何もしない。moveCardFocusと同じ規約)
+  function moveNavFocus(btn, direction) {
+    var list = btn.closest('ul');
+    var buttons = Array.prototype.slice.call(list.querySelectorAll('button'));
+    var next = buttons[buttons.indexOf(btn) + direction];
+    if (next) next.focus();
+  }
 
   // カードに依存しないグローバルショートカット。マッチしてハンドリングした場合はtrueを返す。
   function handleGlobalShortcut(e) {
@@ -2579,6 +2589,12 @@
       case 'ArrowRight':
       case 'ArrowUp':
       case 'ArrowLeft':
+        var navBtn = e.target.closest('#tag-nav button, #group-nav button');
+        if (navBtn) {
+          e.preventDefault();
+          moveNavFocus(navBtn, (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1);
+          return true;
+        }
         // 既にカードにフォーカス中なら、この関数では処理せずhandleCardShortcut側の移動処理に任せる
         if (e.target.closest('#group-sections .card[tabindex]')) return false;
         e.preventDefault();
@@ -2648,6 +2664,10 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
 
     if (e.key === 'Escape') {
+      if (e.target === searchInput && state.search) {
+        clearSearch();
+        return;
+      }
       closeTopmostLayer();
       return;
     }
