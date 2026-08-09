@@ -2888,15 +2888,21 @@
   // フォーカス中のカードに対するショートカット。
   function handleCardShortcut(e, card, cardId) {
     switch (e.key) {
-      case 'ArrowDown':
       case 'ArrowRight':
         e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocus(card, 1);
+        moveCardFocusWithinGroup(card, 1);
         return;
-      case 'ArrowUp':
       case 'ArrowLeft':
         e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocus(card, -1);
+        moveCardFocusWithinGroup(card, -1);
+        return;
+      case 'ArrowDown':
+        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
+        moveCardFocusToGroup(card, 1);
+        return;
+      case 'ArrowUp':
+        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
+        moveCardFocusToGroup(card, -1);
         return;
       case 'Enter':
         e.preventDefault();
@@ -2979,12 +2985,30 @@
     return target;
   }
 
-  // 表示中の全カードをDOM順の1本のリストとして扱い、前後のカードへフォーカスを移す(区画をまたぐ移動も含む)。
+  // 同じグループ区画内のカードのみを対象に、DOM順で前後移動する(区画をまたがない。端では何も起きない)。
   // tabindexの張り替えとfocusedCardIdの更新はfocusinハンドラ側で行われる。
-  function moveCardFocus(card, direction) {
-    var cards = getNavigableCards();
+  function moveCardFocusWithinGroup(card, direction) {
+    var section = card.closest('.group-section');
+    if (!section) return;
+    var cards = Array.prototype.slice.call(section.querySelectorAll('.card[tabindex]'));
     var next = cards[cards.indexOf(card) + direction];
     if (next) next.focus();
+  }
+
+  // 表示中のグループ区画(表示順)を1つ進め/戻し、移動先区画の先頭カードへフォーカスする。
+  // 表示中カードが0件の区画はスキップし、最初/最後の区画では反対側の端へ循環する。
+  // カードを持つ区画が1つしかない場合は何も起きない。
+  function moveCardFocusToGroup(card, direction) {
+    var currentSection = card.closest('.group-section');
+    if (!currentSection) return;
+    var sections = Array.prototype.slice.call(document.querySelectorAll('#group-sections .group-section'))
+      .filter(function (s) { return s.querySelector('.card[tabindex]'); });
+    if (sections.length <= 1) return;
+    var idx = sections.indexOf(currentSection);
+    if (idx === -1) return;
+    var targetIdx = (idx + direction + sections.length) % sections.length;
+    var targetCard = sections[targetIdx].querySelector('.card[tabindex]');
+    if (targetCard) targetCard.focus();
   }
 
   // 削除後のフォーカス移動先は「次のカード」、無ければ「前のカード」、一覧が空になる場合はどこにもフォーカスしない。
