@@ -2821,7 +2821,7 @@
     }
   }
 
-  // タグ/グループナビ内でのボタン間移動(次/前が無ければ何もしない。moveCardFocusと同じ規約)
+  // タグ/グループナビ内でのボタン間移動(次/前が無ければ何もしない。moveCardFocusWithinGroupと同じ規約)
   function moveNavFocus(btn, direction) {
     var list = btn.closest('ul');
     var buttons = Array.prototype.slice.call(list.querySelectorAll('button'));
