@@ -1967,7 +1967,8 @@
     }
 
     document.getElementById('result-count').textContent =
-      filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件) — カードを他のグループ区画にドラッグすると移動できます';
+      filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件)' +
+      (sectionKeys.length ? ' — カードを他のグループ区画にドラッグすると移動できます' : '');
 
     container.innerHTML = sectionKeys.length
       ? sectionKeys.map(function (key) {
