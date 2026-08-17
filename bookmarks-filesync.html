@@ -1170,6 +1170,7 @@
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
     <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
+    <dt><kbd>x</kbd></dt><dd>タグ・グループの絞り込みをすべて解除</dd>
     <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じ、何も無ければフォーカスを外す</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></dt><dd>グループ間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
     <dt><kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>同じグループ内でカード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
@@ -1180,8 +1181,6 @@
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
     <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
-    <dt><kbd>c</kbd></dt><dd>フォーカス中のカードのログインIDをコピー</dd>
-    <dt><kbd>p</kbd></dt><dd>フォーカス中のカードのパスワードをコピー</dd>
   </dl>
 </section>
 
@@ -2856,6 +2855,10 @@
         e.preventDefault();
         toggleHelp();
         return true;
+      case 'x':
+        e.preventDefault();
+        document.getElementById('clear-all-filters-btn').click();
+        return true;
       case 'ArrowDown':
       case 'ArrowRight':
       case 'ArrowUp':
@@ -2918,16 +2921,6 @@
         // render()内のフォーカス復元より後に呼ぶことで、編集フォームの先頭inputへフォーカスを渡す
         var urlInput = document.getElementById('edit-url');
         if (urlInput) urlInput.focus();
-        return;
-      case 'c':
-        e.preventDefault();
-        var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
-        if (copyIdBtn) copyIdBtn.click(); // 既存のcopyToClipboard呼び出し(1606行)にそのまま委譲
-        return;
-      case 'p':
-        e.preventDefault();
-        var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
-        if (copyPwBtn) copyPwBtn.click(); // 既存のcopyToClipboard呼び出し(1609行)にそのまま委譲
         return;
       case 'Delete':
       case 'Backspace':
