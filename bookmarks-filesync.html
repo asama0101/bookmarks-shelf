@@ -1650,7 +1650,7 @@
   }
 
   function getGroups() {
-    var order = {};
+    var order = Object.create(null);
     bookmarks.forEach(function (b) {
       if (!b.group) return;
       if (!(b.group in order) || b.groupOrder < order[b.group]) order[b.group] = b.groupOrder;
