@@ -799,6 +799,16 @@
     border-radius: 6px;
   }
 
+  .search-no-results {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    padding: 40px 18px;
+    text-align: center;
+    border: 1px dashed var(--sage);
+    border-radius: 6px;
+  }
+
   .group-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1951,25 +1961,32 @@
     var sectionKeys = state.group !== null
       ? [state.group === '' ? UNGROUPED : state.group]
       : groupNames.concat([UNGROUPED]);
+    if (state.search.trim()) {
+      sectionKeys = sectionKeys.filter(function (key) {
+        return filtered.some(function (b) { return (b.group || null) === key; });
+      });
+    }
 
     document.getElementById('result-count').textContent =
       filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件) — カードを他のグループ区画にドラッグすると移動できます';
 
-    container.innerHTML = sectionKeys.map(function (key) {
-      var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
-      var body = items.length
-        ? '<div class="group-grid" data-group-grid="' + escapeHtml(key || '') + '">' +
-            items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
-          '</div>'
-        : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
+    container.innerHTML = sectionKeys.length
+      ? sectionKeys.map(function (key) {
+          var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
+          var body = items.length
+            ? '<div class="group-grid" data-group-grid="' + escapeHtml(key || '') + '">' +
+                items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
+              '</div>'
+            : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
 
-      return (
-        '<section class="group-section" data-group="' + escapeHtml(key || '') + '">' +
-          renderGroupSectionHeader(key, items.length) +
-          body +
-        '</section>'
-      );
-    }).join('');
+          return (
+            '<section class="group-section" data-group="' + escapeHtml(key || '') + '">' +
+              renderGroupSectionHeader(key, items.length) +
+              body +
+            '</section>'
+          );
+        }).join('')
+      : '<div class="search-no-results">検索条件に一致するブックマークがありません。</div>';
 
     bindGroupSectionDragEvents(container);
 
