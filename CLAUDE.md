@@ -62,9 +62,14 @@ Each file's script is a single IIFE with these layers, in order:
 4. **Render layer** — `render()` is the single re-render entrypoint, called after every state
    mutation; it rebuilds tag nav, group nav, selection bar, and group sections from scratch via
    string concatenation (no virtual DOM/diffing). With no group filter active, bookmarks are grouped
-   into every existing group plus an "未分類" (ungrouped) section shown side-by-side. When
-   `state.group` is set, `renderSections()` renders only that one section (the selected group, or
-   未分類) instead of the full side-by-side set — `state.tag` still narrows which bookmarks appear
+   into every existing group plus an "未分類" (ungrouped) section shown side-by-side — except when
+   `state.search.trim()` is non-empty, in which case `renderSections()` narrows that side-by-side set to
+   only the groups with at least one match (a `.search-no-results` message renders instead if none match
+   at all). When `state.group` is set, `renderSections()` renders only that one section (the selected
+   group, or 未分類) instead of the full side-by-side set; the same `state.search.trim()` narrowing
+   still applies on top of that single-section view, so a non-empty search with zero matches inside the
+   selected group hides that section too and falls back to the same `.search-no-results` message — the
+   two narrowing rules are not mutually exclusive. `state.tag` still narrows which bookmarks appear
    *within* the rendered section(s) the same way it always has. `state.group` uses `null` for "no
    group filter" and `''` (empty string) for "filter to 未分類", which is a different sentinel from
    `b.group`'s own `null`-for-ungrouped convention — do not conflate the two. `render()` clears
