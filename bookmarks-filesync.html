@@ -805,8 +805,7 @@
     color: var(--ink-soft);
     padding: 40px 18px;
     text-align: center;
-    border: 1px dashed var(--sage);
-    border-radius: 6px;
+    border-top: 1px solid var(--sage);
   }
 
   .group-grid {
@@ -1986,7 +1985,7 @@
             '</section>'
           );
         }).join('')
-      : '<div class="search-no-results">検索条件に一致するブックマークがありません。</div>';
+      : '<div class="search-no-results">検索条件に一致するブックマークがありません。検索語を変更するか、クリアしてください。</div>';
 
     bindGroupSectionDragEvents(container);
 
