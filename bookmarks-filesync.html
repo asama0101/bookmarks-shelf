@@ -799,6 +799,15 @@
     border-radius: 6px;
   }
 
+  .search-no-results {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    padding: 40px 18px;
+    text-align: center;
+    border-top: 1px solid var(--sage);
+  }
+
   .group-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1641,7 +1650,7 @@
   }
 
   function getGroups() {
-    var order = {};
+    var order = Object.create(null);
     bookmarks.forEach(function (b) {
       if (!b.group) return;
       if (!(b.group in order) || b.groupOrder < order[b.group]) order[b.group] = b.groupOrder;
@@ -1655,7 +1664,7 @@
     return Array.from(set).sort(function (a, b) { return a.localeCompare(b); });
   }
 
-  /* ---------- フィルタ・ソート(state.groupでの絞り込みは表示件数を絞るのみ。区画自体は常に全グループ+未分類を並行表示する) ---------- */
+  /* ---------- フィルタ・ソート(表示区画はstate.group未設定なら全グループ+未分類、設定時は単一グループに分岐。いずれの場合も検索語があればヒット0件の区画を除く) ---------- */
 
   function sortItems(items) {
     return items.slice().sort(function (a, b) {
@@ -1928,7 +1937,7 @@
     render();
   });
 
-  /* ---------- グループ区画の描画(常に全グループ+未分類を並行表示) ---------- */
+  /* ---------- グループ区画の描画(state.group未設定なら全グループ+未分類、設定時は単一グループのみ表示。いずれも検索語があればヒット0件の区画を除く) ---------- */
 
   // グループ名の並べ替え・リネームはグループ管理モーダル(#group-manage-overlay)に集約したため、
   // 区画ヘッダーはタイトルと件数のみを表示する(未分類も名前付きグループも同じ形)。
@@ -1951,25 +1960,33 @@
     var sectionKeys = state.group !== null
       ? [state.group === '' ? UNGROUPED : state.group]
       : groupNames.concat([UNGROUPED]);
+    if (state.search.trim()) {
+      sectionKeys = sectionKeys.filter(function (key) {
+        return filtered.some(function (b) { return (b.group || null) === key; });
+      });
+    }
 
     document.getElementById('result-count').textContent =
-      filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件) — カードを他のグループ区画にドラッグすると移動できます';
+      filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件)' +
+      (sectionKeys.length ? ' — カードを他のグループ区画にドラッグすると移動できます' : '');
 
-    container.innerHTML = sectionKeys.map(function (key) {
-      var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
-      var body = items.length
-        ? '<div class="group-grid" data-group-grid="' + escapeHtml(key || '') + '">' +
-            items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
-          '</div>'
-        : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
+    container.innerHTML = sectionKeys.length
+      ? sectionKeys.map(function (key) {
+          var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
+          var body = items.length
+            ? '<div class="group-grid" data-group-grid="' + escapeHtml(key || '') + '">' +
+                items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
+              '</div>'
+            : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
 
-      return (
-        '<section class="group-section" data-group="' + escapeHtml(key || '') + '">' +
-          renderGroupSectionHeader(key, items.length) +
-          body +
-        '</section>'
-      );
-    }).join('');
+          return (
+            '<section class="group-section" data-group="' + escapeHtml(key || '') + '">' +
+              renderGroupSectionHeader(key, items.length) +
+              body +
+            '</section>'
+          );
+        }).join('')
+      : '<div class="search-no-results">検索条件に一致するブックマークがありません。検索語を変更するか、クリアしてください。</div>';
 
     bindGroupSectionDragEvents(container);
 
