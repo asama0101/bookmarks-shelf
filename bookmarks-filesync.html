@@ -1960,7 +1960,7 @@
     var sectionKeys = state.group !== null
       ? [state.group === '' ? UNGROUPED : state.group]
       : groupNames.concat([UNGROUPED]);
-    if (state.search.trim()) {
+    if (state.search.trim() || state.tag !== null) {
       sectionKeys = sectionKeys.filter(function (key) {
         return filtered.some(function (b) { return (b.group || null) === key; });
       });
@@ -1986,7 +1986,7 @@
             '</section>'
           );
         }).join('')
-      : '<div class="search-no-results">検索条件に一致するブックマークがありません。検索語を変更するか、クリアしてください。</div>';
+      : '<div class="search-no-results">検索条件やタグ絞り込みに一致するブックマークがありません。条件を変更するか、クリアしてください。</div>';
 
     bindGroupSectionDragEvents(container);
 
