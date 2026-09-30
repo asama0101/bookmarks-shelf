@@ -2026,9 +2026,15 @@
 
       var editBtn = card.querySelector('[data-action="edit"]');
       var delBtn = card.querySelector('[data-action="delete"]');
+      var pinBtn = card.querySelector('[data-action="toggle-pin"]');
       var tagBtns = card.querySelectorAll('[data-action="filter-tag"]');
       if (editBtn) editBtn.addEventListener('click', function () { state.editingId = b.id; render(); });
       if (delBtn) delBtn.addEventListener('click', function () { handleDelete(b.id); });
+      if (pinBtn) pinBtn.addEventListener('click', function () {
+        b.pinned = !b.pinned;
+        saveData(bookmarks);
+        render();
+      });
       tagBtns.forEach(function (btn) {
         btn.addEventListener('click', function () {
           var t = btn.getAttribute('data-tag');
@@ -2497,6 +2503,7 @@
           '<div class="card-footer">' +
             '<div class="card-actions">' +
               pathCopyHtml +
+              '<button type="button" tabindex="-1" class="btn-quiet' + (b.pinned ? ' active' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
               '<button type="button" tabindex="-1" class="btn-quiet" data-action="edit">編集</button>' +
               '<button type="button" tabindex="-1" class="btn-danger" data-action="delete">削除</button>' +
             '</div>' +
