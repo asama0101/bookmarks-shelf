@@ -1291,6 +1291,15 @@
     return b.url;
   }
 
+  // scheme==='unc'もfile同様アイコン固定表示にする(ローカル/ネットワークパスにfaviconは意味を持たないため)
+  function resolveIconHtml(b) {
+    if (b.scheme === 'file' || b.scheme === 'unc') {
+      return document.getElementById('icon-file').innerHTML;
+    }
+    var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
+    return '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
+  }
+
   /* ---------- ユーティリティ ---------- */
 
   function escapeHtml(str) {
@@ -1713,14 +1722,7 @@
   }
 
   function renderFavoriteCard(b) {
-    var scheme = b.scheme;
-    var iconHtml;
-    if (scheme === 'file' || scheme === 'unc') {
-      iconHtml = document.getElementById('icon-file').innerHTML;
-    } else {
-      var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
-      iconHtml = '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
-    }
+    var iconHtml = resolveIconHtml(b);
     return (
       '<article class="card card-favorite" data-fav-id="' + escapeHtml(b.id) + '">' +
         '<div class="card-body">' +
@@ -1745,6 +1747,8 @@
   // bindGroupSectionDragEvents()・getNavigableCards()のいずれからも対象外になる(意図的な設計)。
   function renderFavoritesSection() {
     var container = document.getElementById('favorites-section');
+    // state.groupで特定グループ(または''=未分類)に絞り込み中は、他のグループセクション同様に常に非表示(spec: design doc 106-109行)
+    if (state.group !== null) { container.innerHTML = ''; return; }
     var pinned = getSearchTagFiltered().filter(function (b) { return b.pinned; });
     if (!pinned.length) {
       container.innerHTML = '';
@@ -1821,7 +1825,8 @@
         }).join('')
       : '<div class="search-no-results">検索条件やタグ絞り込みに一致するブックマークがありません。条件を変更するか、クリアしてください。</div>';
 
-    bindGroupSectionDragEvents(container);
+    // よく使う順表示中は視覚的な並びと配列上のorderが一致しないため、ドラッグ&ドロップを無効化する(手動順を破壊しないため)
+    if (state.sortMode !== 'frequency') bindGroupSectionDragEvents(container);
 
     // カード内イベントの割り当て
     bookmarks.forEach(function (b) {
@@ -1892,7 +1897,7 @@
         });
       }
 
-      if (!state.selectMode) bindDragEvents(card, b);
+      if (!state.selectMode && state.sortMode !== 'frequency') bindDragEvents(card, b);
     });
 
     var rovingTarget = applyRovingTabindex();
@@ -2275,13 +2280,7 @@
 
   function renderCard(b) {
     var scheme = b.scheme;
-    var iconHtml;
-    if (scheme === 'file') {
-      iconHtml = document.getElementById('icon-file').innerHTML;
-    } else {
-      var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
-      iconHtml = '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
-    }
+    var iconHtml = resolveIconHtml(b);
 
     var tagsHtml = (b.tags || []).map(function (t) {
       return '<button type="button" tabindex="-1" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
@@ -2651,7 +2650,7 @@
   (function setupBookmarkletLink() {
     var link = document.getElementById('bookmarklet-link');
     if (!link) return;
-    var baseUrl = location.origin + location.pathname;
+    var baseUrl = location.href.split('?')[0].split('#')[0];
     var code = "javascript:location.href='" + baseUrl +
       "?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)";
     link.setAttribute('href', code);
