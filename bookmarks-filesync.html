@@ -1407,6 +1407,18 @@
     document.getElementById('disconnect-btn').hidden = false;
     setHeaderButtonsEnabled(true);
     render();
+    applyPendingBookmarkletData();
+  }
+
+  function applyPendingBookmarkletData() {
+    if (!pendingBookmarkletData) return;
+    var data = pendingBookmarkletData;
+    pendingBookmarkletData = null;
+    newUrlInput.value = data.url;
+    newTitleInput.value = data.title;
+    addPanel.hidden = false;
+    newUrlInput.focus();
+    if (!data.title) newUrlInput.dispatchEvent(new Event('input'));
   }
 
   var DEFAULT_CONNECT_MESSAGE = 'ブックマークを保存するJSONファイルを開くか、新しく作成してください。以降の追加・編集はこのファイルに自動保存されます。';
@@ -1430,6 +1442,14 @@
   // クリック時にIndexedDBへ再度往復するとユーザー操作の有効期限が切れ、requestPermission()の
   // 許可プロンプトが出せなくなる恐れがあるため、boot()で取得済みのハンドルをそのまま使い回す)
   var pendingReconnectHandle = null;
+
+  // ブックマークレット経由の url/title パラメータは、接続確立前に読み取っておき、
+  // setConnected() 内で(接続経路によらず)まとめて適用する
+  var pendingBookmarkletData = (function () {
+    var params = new URLSearchParams(location.search);
+    var paramUrl = params.get('url');
+    return paramUrl ? { url: paramUrl, title: params.get('title') || '' } : null;
+  })();
 
   function boot() {
     if (!window.showOpenFilePicker) {
