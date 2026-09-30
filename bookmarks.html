@@ -1191,7 +1191,17 @@
       var needsGroupOrderMigration = parsed.some(function (b) { return typeof b.groupOrder !== 'number'; });
       if (needsGroupOrderMigration) assignGroupOrder(parsed);
 
-      if (needsOrderMigration || needsGroupOrderMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      // お気に入り・よく使う順機能の導入前に保存されたデータには pinned/lastAccessed/accessCount が無いため、初期値で補完する
+      var needsFavFieldsMigration = parsed.some(function (b) { return typeof b.pinned !== 'boolean'; });
+      if (needsFavFieldsMigration) {
+        parsed.forEach(function (b) {
+          if (typeof b.pinned !== 'boolean') b.pinned = false;
+          if (typeof b.lastAccessed !== 'number') b.lastAccessed = null;
+          if (typeof b.accessCount !== 'number') b.accessCount = 0;
+        });
+      }
+
+      if (needsOrderMigration || needsGroupOrderMigration || needsFavFieldsMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       return parsed;
     } catch (e) {
       return [];
@@ -1321,7 +1331,10 @@
       memo: memo,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
-      order: 0 // インポート確定後にファイル内の並び順で採番し直す
+      order: 0, // インポート確定後にファイル内の並び順で採番し直す
+      pinned: typeof raw.pinned === 'boolean' ? raw.pinned : false,
+      lastAccessed: typeof raw.lastAccessed === 'number' ? raw.lastAccessed : null,
+      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0
     };
   }
 
@@ -2360,7 +2373,10 @@
       memo: memo,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
-      order: bookmarks.length
+      order: bookmarks.length,
+      pinned: false,
+      lastAccessed: null,
+      accessCount: 0
     });
 
     saveData(bookmarks);

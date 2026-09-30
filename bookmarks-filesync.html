@@ -1623,7 +1623,10 @@
       memo: memo,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
-      order: 0 // 読み込み確定後にファイル内の並び順で採番し直す
+      order: 0, // 読み込み確定後にファイル内の並び順で採番し直す
+      pinned: typeof raw.pinned === 'boolean' ? raw.pinned : false,
+      lastAccessed: typeof raw.lastAccessed === 'number' ? raw.lastAccessed : null,
+      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0
     };
   }
 
@@ -2662,7 +2665,10 @@
       memo: memo,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
-      order: bookmarks.length
+      order: bookmarks.length,
+      pinned: false,
+      lastAccessed: null,
+      accessCount: 0
     });
 
     saveData(bookmarks);
