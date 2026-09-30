@@ -148,10 +148,11 @@
   既に接続済みの場合は従来通り即座に開く。
 
   接続確立の経路は「再接続」（`reconnect-btn`）に限らない。`open-file-btn`（既存ファイルを開く）・
-  `create-file-btn`（新規ファイルを作成する）からも`setConnected()`が呼ばれ接続状態になる
-  （`bookmarks-filesync.html:1456-1496`）。ブックマークレットを初めて使うユーザーは、まだ
-  ファイル未接続で`open`/`create`から接続する経路を通る可能性が高いため、**`setConnected()`が
-  呼ばれる3経路（reconnect / open / create）すべてで**保留中の自動オープン&プリフィルを実行する
+  `create-file-btn`（新規ファイルを作成する）・`boot()`内の自動再接続（起動時に既に権限がある場合）
+  からも`setConnected()`が呼ばれ接続状態になる（plan-audit CP-Bで確認済み、`bookmarks-filesync.html`の
+  該当行は1433/1465/1487/1504）。ブックマークレットを初めて使うユーザーは、まだファイル未接続で
+  `open`/`create`から接続する経路を通る可能性が高いため、**`setConnected()`が呼ばれる4経路
+  （boot自動再接続 / open / create / reconnect）すべてで**保留中の自動オープン&プリフィルを実行する
   （`setConnected()`内、または呼び出し直後の共通箇所にフックする）。
 - ヘルプパネル内に「ブックマークレットを生成」導線を追加する。生成されるコードは概ね以下の形で、
   現在の`location.href`（クエリ文字列は除いたベースURL）を埋め込む形で組み立てる。
