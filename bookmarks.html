@@ -2916,6 +2916,17 @@
   window.addEventListener('resize', syncHeaderHeight);
 
   render();
+
+  (function applyBookmarkletParams() {
+    var params = new URLSearchParams(location.search);
+    var paramUrl = params.get('url');
+    if (!paramUrl) return;
+    newUrlInput.value = paramUrl;
+    newTitleInput.value = params.get('title') || '';
+    addPanel.hidden = false;
+    newUrlInput.focus();
+    if (!newTitleInput.value) newUrlInput.dispatchEvent(new Event('input')); // タイトル未指定ならURLからの仮タイトル補完(既存ロジック)を発火させる
+  })();
 })();
 </script>
 </body>
