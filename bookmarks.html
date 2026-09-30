@@ -1020,6 +1020,7 @@
   <div class="header-actions">
     <button class="btn btn-amber" id="toggle-add-btn" type="button">+ 追加</button>
     <button class="btn btn-ghost" id="toggle-select-btn" type="button">選択</button>
+    <button class="btn btn-ghost" id="toggle-sort-mode-btn" type="button">よく使う順で表示</button>
     <button class="btn btn-ghost" id="export-btn" type="button">エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button">インポート</button>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
@@ -1172,7 +1173,13 @@
   'use strict';
 
   var STORAGE_KEY = 'bookmarks_data';
+  var SORT_MODE_KEY = 'bookmarks_sort_mode';
   var UNGROUPED = null; // 未分類(グループ未割り当て)を表す内部値
+
+  function loadSortMode() {
+    try { return localStorage.getItem(SORT_MODE_KEY) === 'frequency' ? 'frequency' : 'manual'; }
+    catch (e) { return 'manual'; }
+  }
 
   var state = {
     search: '',
@@ -1183,7 +1190,8 @@
     editingTag: null,
     selectMode: false,
     selectedIds: new Set(),
-    sidebarTab: 'group'
+    sidebarTab: 'group',
+    sortMode: loadSortMode()
   };
 
   /* ---------- データ層 ---------- */
@@ -1400,7 +1408,18 @@
 
   /* ---------- フィルタ・ソート(表示区画はstate.group未設定なら全グループ+未分類、設定時は単一グループに分岐。いずれの場合も検索語があればヒット0件の区画を除く) ---------- */
 
+  // 未アクセス(accessCount===0)は常に最小スコア(0)になるため、lastAccessedがnullでも
+  // 「十分大きい経過日数」のような仮値を用意せず自然に最下位へ落ちる
+  function frequencyScore(b) {
+    if (!b.accessCount) return 0;
+    var daysSinceLastAccess = Math.max(0, (Date.now() - b.lastAccessed) / 86400000);
+    return b.accessCount / (daysSinceLastAccess + 1);
+  }
+
   function sortItems(items) {
+    if (state.sortMode === 'frequency') {
+      return items.slice().sort(function (a, b) { return frequencyScore(b) - frequencyScore(a); });
+    }
     return items.slice().sort(function (a, b) {
       return (a.order || 0) - (b.order || 0);
     });
@@ -1460,6 +1479,10 @@
     var selectBtn = document.getElementById('toggle-select-btn');
     selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
     selectBtn.classList.toggle('active', state.selectMode);
+
+    var sortModeBtn = document.getElementById('toggle-sort-mode-btn');
+    sortModeBtn.textContent = state.sortMode === 'frequency' ? '手動順で表示' : 'よく使う順で表示';
+    sortModeBtn.classList.toggle('active', state.sortMode === 'frequency');
 
     syncHeaderHeight();
   }
@@ -1842,6 +1865,16 @@
 
       var copyPathBtn = card.querySelector('[data-action="copy-path"]');
       if (copyPathBtn) copyPathBtn.addEventListener('click', function () { copyToClipboard(b.url, copyPathBtn); });
+
+      var titleLink = card.querySelector('.card-title a');
+      if (titleLink) {
+        titleLink.addEventListener('click', function () {
+          b.accessCount = (b.accessCount || 0) + 1;
+          b.lastAccessed = Date.now();
+          saveData(bookmarks);
+          render();
+        });
+      }
 
       if (!state.selectMode) bindDragEvents(card, b);
     });
@@ -2432,6 +2465,12 @@
   document.getElementById('toggle-add-btn').addEventListener('click', function () {
     addPanel.hidden = !addPanel.hidden;
     if (!addPanel.hidden) newUrlInput.focus();
+  });
+
+  document.getElementById('toggle-sort-mode-btn').addEventListener('click', function () {
+    state.sortMode = state.sortMode === 'frequency' ? 'manual' : 'frequency';
+    try { localStorage.setItem(SORT_MODE_KEY, state.sortMode); } catch (e) {}
+    render();
   });
 
   // タイトル未入力時のみ、URLからの仮タイトルで自動補完する
