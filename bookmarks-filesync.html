@@ -553,6 +553,16 @@
   }
   .group-section-grip:active { cursor: grabbing; }
 
+  .favorites-section {
+    border: 1px solid var(--amber);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    padding: 12px;
+  }
+  .favorites-section .group-section-title { color: var(--amber-ink); }
+  .card-favorite { padding: 10px 12px; }
+  .card-favorite .card-actions { justify-content: flex-end; }
+
   .group-order-btn {
     background: transparent;
     border: none;
@@ -1191,6 +1201,11 @@
     <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
   </dl>
+  <div class="bookmarklet-generator">
+    <h3>ブックマークレット</h3>
+    <p>下のリンクをブラウザのブックマークバーへドラッグして登録すると、閲覧中のページをワンクリックでこのアプリに登録できます。</p>
+    <a href="#" id="bookmarklet-link" class="btn btn-ghost">ここに登録 &rarr; bookmark-shelf</a>
+  </div>
 </section>
 
 <div class="layout" id="layout" hidden>
@@ -1218,6 +1233,7 @@
 
   <main class="main">
     <p class="result-count" id="result-count"></p>
+    <div id="favorites-section"></div>
     <div id="group-sections"></div>
   </main>
 </div>
@@ -1396,6 +1412,18 @@
     document.getElementById('disconnect-btn').hidden = false;
     setHeaderButtonsEnabled(true);
     render();
+    applyPendingBookmarkletData();
+  }
+
+  function applyPendingBookmarkletData() {
+    if (!pendingBookmarkletData) return;
+    var data = pendingBookmarkletData;
+    pendingBookmarkletData = null;
+    newUrlInput.value = data.url;
+    newTitleInput.value = data.title;
+    addPanel.hidden = false;
+    newUrlInput.focus();
+    if (!data.title) newUrlInput.dispatchEvent(new Event('input'));
   }
 
   var DEFAULT_CONNECT_MESSAGE = 'ブックマークを保存するJSONファイルを開くか、新しく作成してください。以降の追加・編集はこのファイルに自動保存されます。';
@@ -1419,6 +1447,14 @@
   // クリック時にIndexedDBへ再度往復するとユーザー操作の有効期限が切れ、requestPermission()の
   // 許可プロンプトが出せなくなる恐れがあるため、boot()で取得済みのハンドルをそのまま使い回す)
   var pendingReconnectHandle = null;
+
+  // ブックマークレット経由の url/title パラメータは、接続確立前に読み取っておき、
+  // setConnected() 内で(接続経路によらず)まとめて適用する
+  var pendingBookmarkletData = (function () {
+    var params = new URLSearchParams(location.search);
+    var paramUrl = params.get('url');
+    return paramUrl ? { url: paramUrl, title: params.get('title') || '' } : null;
+  })();
 
   function boot() {
     if (!window.showOpenFilePicker) {
@@ -1518,12 +1554,13 @@
   function classifyUrl(raw) {
     if (/^https:\/\//i.test(raw)) return 'https';
     if (/^http:\/\//i.test(raw)) return 'http';
+    if (/^\\\\/.test(raw)) return 'unc';
     if (/^file:\/\/\//i.test(raw)) return 'file';
     return null;
   }
 
   function deriveDomain(url, scheme) {
-    if (scheme === 'file') return null;
+    if (scheme === 'file' || scheme === 'unc') return null;
     try {
       return new URL(url).hostname;
     } catch (e) {
@@ -1541,10 +1578,30 @@
         var segments = path.split('/').filter(Boolean);
         return segments.length ? segments[segments.length - 1] : path;
       }
+      if (scheme === 'unc') {
+        var uncSegments = url.split('\\').filter(Boolean);
+        return uncSegments.length ? uncSegments[uncSegments.length - 1] : url;
+      }
       return new URL(url).hostname;
     } catch (e) {
       return '';
     }
+  }
+
+  // UNCパスはブラウザのfile://ハンドリングに直接渡せないため、表示直前にfile://表記へ変換する。
+  // 保存値(b.url)自体は変換しない(design-audit CP-Aで確定: 環境依存の表記ゆれをsanitizeBookmark段階に持ち込まないため)
+  function resolveOpenHref(b) {
+    if (b.scheme === 'unc') return 'file:' + b.url.replace(/\\/g, '/');
+    return b.url;
+  }
+
+  // scheme==='unc'もfile同様アイコン固定表示にする(ローカル/ネットワークパスにfaviconは意味を持たないため)
+  function resolveIconHtml(b) {
+    if (b.scheme === 'file' || b.scheme === 'unc') {
+      return document.getElementById('icon-file').innerHTML;
+    }
+    var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
+    return '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
   }
 
   /* ---------- ユーティリティ ---------- */
@@ -1623,7 +1680,10 @@
       memo: memo,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
-      order: 0 // 読み込み確定後にファイル内の並び順で採番し直す
+      order: 0, // 読み込み確定後にファイル内の並び順で採番し直す
+      pinned: typeof raw.pinned === 'boolean' ? raw.pinned : false,
+      lastAccessed: typeof raw.lastAccessed === 'number' ? raw.lastAccessed : null,
+      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0
     };
   }
 
@@ -1717,6 +1777,7 @@
     updateSidebarClearButtons();
     renderFilterIndicator();
     renderSelectionBar();
+    renderFavoritesSection();
     renderSections();
     refreshAddFormChipPickers();
     if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
@@ -1949,6 +2010,60 @@
     '</div>';
   }
 
+  function renderFavoriteCard(b) {
+    var iconHtml = resolveIconHtml(b);
+    return (
+      '<article class="card card-favorite" data-fav-id="' + escapeHtml(b.id) + '">' +
+        '<div class="card-body">' +
+          '<div class="card-top">' +
+            '<div class="seal">' + iconHtml + '</div>' +
+            '<div class="card-title-wrap">' +
+              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(b.title) + '</a></h3>' +
+            '</div>' +
+          '</div>' +
+          '<div class="card-footer">' +
+            '<div class="card-actions">' +
+              '<button type="button" class="btn-quiet" data-action="unpin">ピン解除</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  // お気に入りは検索/タグ/グループの絞り込みルールを通常セクションと共有する(getSearchTagFilteredを再利用)。
+  // #group-sections とは独立したDOMツリーのため、data-card-idベースのイベント割り当てループ・
+  // bindGroupSectionDragEvents()・getNavigableCards()のいずれからも対象外になる(意図的な設計)。
+  function renderFavoritesSection() {
+    var container = document.getElementById('favorites-section');
+    // state.groupで特定グループ(または''=未分類)に絞り込み中は、他のグループセクション同様に常に非表示(spec: design doc 106-109行)
+    if (state.group !== null) { container.innerHTML = ''; return; }
+    var pinned = getSearchTagFiltered().filter(function (b) { return b.pinned; });
+    if (!pinned.length) {
+      container.innerHTML = '';
+      return;
+    }
+    var items = sortItems(pinned);
+    container.innerHTML =
+      '<section class="favorites-section">' +
+        '<div class="group-section-header"><h2 class="group-section-title">お気に入り</h2><span class="group-section-count">' + items.length + ' 件</span></div>' +
+        '<div class="group-grid">' + items.map(renderFavoriteCard).join('') +
+        '</div>' +
+      '</section>';
+
+    container.querySelectorAll('[data-fav-id]').forEach(function (el) {
+      var id = el.getAttribute('data-fav-id');
+      var b = bookmarks.filter(function (x) { return x.id === id; })[0];
+      if (!b) return;
+      var unpinBtn = el.querySelector('[data-action="unpin"]');
+      if (unpinBtn) unpinBtn.addEventListener('click', function () {
+        b.pinned = false;
+        saveData(bookmarks);
+        render();
+      });
+    });
+  }
+
   function renderSections() {
     var container = document.getElementById('group-sections');
     // render()でDOMを作り直すとフォーカスが失われるため、カード自身にフォーカスがあった場合だけ復元する。
@@ -2011,9 +2126,15 @@
 
       var editBtn = card.querySelector('[data-action="edit"]');
       var delBtn = card.querySelector('[data-action="delete"]');
+      var pinBtn = card.querySelector('[data-action="toggle-pin"]');
       var tagBtns = card.querySelectorAll('[data-action="filter-tag"]');
       if (editBtn) editBtn.addEventListener('click', function () { state.editingId = b.id; render(); });
       if (delBtn) delBtn.addEventListener('click', function () { handleDelete(b.id); });
+      if (pinBtn) pinBtn.addEventListener('click', function () {
+        b.pinned = !b.pinned;
+        saveData(bookmarks);
+        render();
+      });
       tagBtns.forEach(function (btn) {
         btn.addEventListener('click', function () {
           var t = btn.getAttribute('data-tag');
@@ -2039,6 +2160,9 @@
 
       var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
       if (copyPwBtn) copyPwBtn.addEventListener('click', function () { copyToClipboard(b.loginPassword, copyPwBtn); });
+
+      var copyPathBtn = card.querySelector('[data-action="copy-path"]');
+      if (copyPathBtn) copyPathBtn.addEventListener('click', function () { copyToClipboard(b.url, copyPathBtn); });
 
       if (!state.selectMode) bindDragEvents(card, b);
     });
@@ -2423,13 +2547,7 @@
 
   function renderCard(b) {
     var scheme = b.scheme;
-    var iconHtml;
-    if (scheme === 'file') {
-      iconHtml = document.getElementById('icon-file').innerHTML;
-    } else {
-      var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
-      iconHtml = '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
-    }
+    var iconHtml = resolveIconHtml(b);
 
     var tagsHtml = (b.tags || []).map(function (t) {
       return '<button type="button" tabindex="-1" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
@@ -2458,6 +2576,10 @@
 
     var memoHtml = b.memo ? '<p class="card-memo">' + escapeHtml(b.memo) + '</p>' : '';
 
+    var pathCopyHtml = (scheme === 'file' || scheme === 'unc')
+      ? '<button type="button" tabindex="-1" class="btn-quiet" data-action="copy-path">パスをコピー</button>'
+      : '';
+
     return (
       '<article class="card" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
         '<div class="card-stub">' + grip + '</div>' +
@@ -2466,7 +2588,7 @@
             checkboxHtml +
             '<div class="seal">' + iconHtml + '</div>' +
             '<div class="card-title-wrap">' +
-              '<h3 class="card-title"><a href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
+              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
             '</div>' +
           '</div>' +
           (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
@@ -2474,6 +2596,8 @@
           memoHtml +
           '<div class="card-footer">' +
             '<div class="card-actions">' +
+              pathCopyHtml +
+              '<button type="button" tabindex="-1" class="btn-quiet' + (b.pinned ? ' active' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
               '<button type="button" tabindex="-1" class="btn-quiet" data-action="edit">編集</button>' +
               '<button type="button" tabindex="-1" class="btn-danger" data-action="delete">削除</button>' +
             '</div>' +
@@ -2662,7 +2786,10 @@
       memo: memo,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
-      order: bookmarks.length
+      order: bookmarks.length,
+      pinned: false,
+      lastAccessed: null,
+      accessCount: 0
     });
 
     saveData(bookmarks);
@@ -2779,6 +2906,16 @@
   function toggleHelp() {
     helpPanel.hidden = !helpPanel.hidden;
   }
+
+  // ブックマークレット生成リンクのhrefを動的に設定
+  (function setupBookmarkletLink() {
+    var link = document.getElementById('bookmarklet-link');
+    if (!link) return;
+    var baseUrl = location.href.split('?')[0].split('#')[0];
+    var code = "javascript:location.href='" + baseUrl +
+      "?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)";
+    link.setAttribute('href', code);
+  })();
 
   // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → タグ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
   // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。閉じる層が何も無ければ、最後にフォーカスを外す。

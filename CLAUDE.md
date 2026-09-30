@@ -41,7 +41,12 @@ Each file's script is a single IIFE with these layers, in order:
 1. **Data layer** — this is the part that differs between the two files:
    - `bookmarks.html`: `loadData()`/`saveData()` read/write `localStorage` synchronously. On load,
      bookmarks missing a manual-sort `order` field are migrated in place (assigned by array index)
-     — this is a one-time compatibility shim for data saved before drag-to-reorder existed.
+     — this is a one-time compatibility shim for data saved before drag-to-reorder existed. The same
+     migration pattern backfills `pinned`/`lastAccessed`/`accessCount` (added `false`/`null`/`0`) for
+     data saved before favorites/frequency-sort existed, gated on `pinned` being non-boolean. The
+     manual-vs-frequency display toggle (`state.sortMode`) persists to its own `localStorage` key
+     (`SORT_MODE_KEY`, separate from the bookmark data key) via `loadSortMode()`, which also coerces
+     any unrecognized stored value back to `'manual'`.
    - `bookmarks-filesync.html`: adds an IndexedDB-backed store (`idbGetHandle`/`idbSetHandle`/
      `idbClearHandle`) that remembers the last-used `FileSystemFileHandle` so the app can offer to
      reconnect on next load without re-prompting the file picker. `boot()` drives the
@@ -49,11 +54,26 @@ Each file's script is a single IIFE with these layers, in order:
      (`requestPermission`) require a live user gesture, the pending handle is kept in
      `pendingReconnectHandle` rather than re-fetched from IndexedDB inside the reconnect button's
      click handler. Writes go through a `saveChain` promise chain so overlapping saves (e.g. rapid
-     drag-and-drop) serialize onto the same file instead of racing `createWritable()` calls.
-2. **URL/domain helpers** — `classifyUrl()` allowlists only `http://`, `https://`, `file:///`
-   schemes; `deriveDomain()`/`deriveTentativeTitle()` derive a favicon domain or a fallback title
-   (file paths are parsed by string splitting rather than `URL()` since `file://` paths can contain
-   `#`/`?` characters that would otherwise be misparsed as fragment/query).
+     drag-and-drop) serialize onto the same file instead of racing `createWritable()` calls. A
+     bookmarklet-provided prefill (`?url=&title=` query params, read into `pendingBookmarkletData` at
+     script load, before any file is connected) can't be shown immediately, since the add form isn't
+     reachable until a file connection exists — `applyPendingBookmarkletData()` is instead called from
+     inside `setConnected()`, so it fires once regardless of whether the connection came from opening
+     a file, creating one, or reconnecting to the remembered handle.
+2. **URL/domain helpers** — `classifyUrl()` allowlists `http://`, `https://`, `file:///`, and UNC
+   paths (a leading `\\`, tested before the `file:///` check) as `'unc'`; `deriveDomain()`/
+   `deriveTentativeTitle()` derive a favicon domain or a fallback title (file paths are parsed by
+   string splitting rather than `URL()` since `file://` paths can contain `#`/`?` characters that
+   would otherwise be misparsed as fragment/query; `unc` paths are split on `\` the same way). UNC
+   bookmarks are stored with their original backslash form (`b.url` is never rewritten, so import/
+   export and `sanitizeBookmark()` don't need to know about the conversion); `resolveOpenHref()`
+   converts a `unc`-scheme bookmark to a `file:` href (swapping `\` for `/`) only at the point a link
+   is rendered. `resolveIconHtml()` centralizes the file-vs-favicon icon decision (`file` and `unc`
+   both get the fixed file icon, everything else gets a favicon with a globe fallback) and is shared
+   by `renderCard()` and `renderFavoriteCard()` — the two card renderers previously computed this
+   inline and independently, which let them silently disagree on whether `unc` counted as file-like;
+   extracting the shared helper closes that gap structurally rather than requiring both call sites to
+   be kept in sync by hand.
 3. **`sanitizeBookmark()`** — the single validation gate for any bookmark data not created through
    the in-app add/edit forms (JSON import in both files, plus the initial file read in the filesync
    variant). Re-derives an `id`, coerces every field to an expected type/shape, and rejects entries
@@ -99,10 +119,56 @@ Each file's script is a single IIFE with these layers, in order:
    the two automatically — changing only one (e.g. flipping the initial `state.sidebarTab` without
    also updating the markup, or vice versa) produces a silent bug where the internal state and the
    on-screen tab disagree.
+
+   A pinned bookmark (`b.pinned`) additionally renders in a standalone **favorites section**
+   (`#favorites-section`, populated by `renderFavoritesSection()`, called from `render()` right
+   before `renderSections()`) — a DOM tree kept entirely separate from `#group-sections`. It's built
+   from simplified `renderFavoriteCard()` markup (`data-fav-id`, not `data-card-id`) that only
+   supports opening the link and unpinning, so it's intentionally invisible to every mechanism keyed
+   on `data-card-id`: the per-card event-binding loop in `renderSections()`, `bindGroupSectionDragEvents()`,
+   and the roving-tabindex keyboard navigation (`getNavigableCards()`). A pinned bookmark still
+   renders in its normal group section too — favorites is a duplicate view, not a move.
+
+   The favorites section reuses `getSearchTagFiltered()` so an active search/tag filter narrows it
+   the same way it narrows group sections, but it is unconditionally hidden whenever
+   `state.group !== null` (a specific group, or `''` for 未分類, is selected) regardless of whether
+   the selected group itself contains pinned bookmarks — matching how every other group section stops
+   rendering under a group filter except the one selected. This unconditional-hide rule was a
+   post-review fix: filtering the favorites section down by "does `getSearchTagFiltered()`'s
+   group-scoped result contain a pinned item" reads similar but is a different, spec-violating
+   condition — it would keep the section visible under a group filter whenever that group happens to
+   have a pin.
+
+   `bookmarks.html` (not `bookmarks-filesync.html`) additionally supports sorting by usage frequency:
+   a header toggle (`#toggle-sort-mode-btn`) flips `state.sortMode` between `'manual'` and
+   `'frequency'`. `sortItems()` branches on it — manual mode sorts by `order` as before; frequency
+   mode sorts by `frequencyScore(b)`, `accessCount / (daysSinceLastAccess + 1)`, computed from
+   `b.accessCount`/`b.lastAccessed`. A bookmark with `accessCount === 0` scores `0` unconditionally
+   (skipping the days-since-access term entirely) so a never-opened bookmark sorts last without
+   needing a placeholder "very large elapsed days" value for its `null` `lastAccessed`. Opening a
+   bookmark via its title link increments `accessCount` and stamps `lastAccessed = Date.now()` (both
+   in the normal grid and in the favorites section); `bookmarks-filesync.html` carries the same three
+   fields through `sanitizeBookmark()`/new-bookmark defaults for cross-file JSON portability, but has
+   no UI to write to them and never increments them.
+
+   Both files build a bookmarklet link (`#bookmarklet-link`, inside the help panel) the same way:
+   an IIFE (`setupBookmarkletLink()`) strips any `?query` / `#fragment` off `location.href` to get a
+   stable base URL, then sets the link's `href` to a `javascript:` URI that navigates the current tab
+   to `<baseUrl>?url=<encodeURIComponent(location.href)>&title=<encodeURIComponent(document.title)>`
+   — i.e. clicking the bookmarklet on any page reopens the app with that page's URL/title as query
+   params. `bookmarks.html` reads those params and prefills the add form in a trailing IIFE that runs
+   once, right after the initial `render()` call; `bookmarks-filesync.html`'s equivalent prefill is
+   deferred through `pendingBookmarkletData` as described above, since it has to wait for a file
+   connection first.
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
-   also propagate the target group's `groupOrder` onto the moved bookmark. Group section headers
+   also propagate the target group's `groupOrder` onto the moved bookmark. In `bookmarks.html`, both
+   paths are disabled outright while `state.sortMode === 'frequency'` (`bindGroupSectionDragEvents()`
+   isn't called, and `bindDragEvents()` is skipped per-card) — the visual order in that mode reflects
+   `frequencyScore`, not `order`, so a drag would splice the underlying array at the wrong position
+   and silently corrupt the manual order it's supposed to be preserving for when the user switches
+   back. Group section headers
    themselves show only a title and count — reordering and renaming groups is not done on the section
    header, it's done in the **グループ管理 (group management) modal** (`#group-manage-overlay`,
    opened via the "管理" button, which lives inside the サイドバー's グループ tab panel and is
@@ -142,15 +208,28 @@ Each file's script is a single IIFE with these layers, in order:
 ## Data model
 
 Each bookmark:
-`{ id, url, title, tags[], group, groupOrder, loginId, loginPassword, memo, scheme, domain, order }`.
+`{ id, url, title, tags[], group, groupOrder, loginId, loginPassword, memo, scheme, domain, order,
+pinned, lastAccessed, accessCount }`.
 
 - `loginPassword` is stored and displayed **in plaintext** by design (there's a visible warning in
   the UI, `※ パスワードは平文で保存されます`) — this is a deliberate trade-off for a local personal
   tool, not an oversight.
+- `scheme` is one of `'https'`/`'http'`/`'file'`/`'unc'`, assigned by `classifyUrl()`. `'unc'` covers
+  Windows UNC paths (`\\server\share\...`) pasted straight into the URL field; like `'file'`, its
+  `domain` is `null` and it renders with the fixed file icon, but it additionally needs
+  `resolveOpenHref()` at render time to become a clickable `file:` link (see Architecture above).
+- `pinned` (boolean, default `false`) controls whether a bookmark also appears in the standalone
+  favorites section, independent of its `group`/`order` — pinning doesn't move or remove it from its
+  group.
+- `lastAccessed` (`number` timestamp or `null`) / `accessCount` (`number`, default `0`) track when
+  and how often a bookmark's link has been opened; both start `null`/`0` and are only ever written by
+  `bookmarks.html`'s frequency-sort feature (see Architecture above) — `bookmarks-filesync.html`
+  carries the fields but never updates them itself.
 - `group` is a plain string or `null` (ungrouped); groups are not a separate entity, just a value
   bookmarks share.
-- `order` is a manual sort index; cards within a group are always displayed in `order` sequence
-  (there is no sort-mode selector — manual drag-to-reorder is the only ordering).
+- `order` is a manual sort index; cards within a group are displayed in `order` sequence except in
+  `bookmarks.html`'s frequency-sort display mode (see Architecture above), where it's ignored in
+  favor of `frequencyScore()`.
 - `groupOrder` is a manual sort index for the group *section itself* (which group's section appears
   before which), denormalized the same way `group` is: every bookmark sharing a `group` value is
   expected to carry the same `groupOrder`. Every code path that sets `b.group` must also set
