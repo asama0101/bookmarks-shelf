@@ -1757,6 +1757,17 @@
       var id = el.getAttribute('data-fav-id');
       var b = bookmarks.filter(function (x) { return x.id === id; })[0];
       if (!b) return;
+
+      var titleLink = el.querySelector('.card-title a');
+      if (titleLink) {
+        titleLink.addEventListener('click', function () {
+          b.accessCount = (b.accessCount || 0) + 1;
+          b.lastAccessed = Date.now();
+          saveData(bookmarks);
+          render();
+        });
+      }
+
       var unpinBtn = el.querySelector('[data-action="unpin"]');
       if (unpinBtn) unpinBtn.addEventListener('click', function () {
         b.pinned = false;
