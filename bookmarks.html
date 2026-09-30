@@ -477,6 +477,16 @@
   }
   .group-section-grip:active { cursor: grabbing; }
 
+  .favorites-section {
+    border: 1px solid var(--amber);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    padding: 12px;
+  }
+  .favorites-section .group-section-title { color: var(--amber-ink); }
+  .card-favorite { padding: 10px 12px; }
+  .card-favorite .card-actions { justify-content: flex-end; }
+
   .group-order-btn {
     background: transparent;
     border: none;
@@ -1118,6 +1128,7 @@
 
   <main class="main">
     <p class="result-count" id="result-count"></p>
+    <div id="favorites-section"></div>
     <div id="group-sections"></div>
   </main>
 </div>
@@ -1440,6 +1451,7 @@
     updateSidebarClearButtons();
     renderFilterIndicator();
     renderSelectionBar();
+    renderFavoritesSection();
     renderSections();
     refreshAddFormChipPickers();
     if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
@@ -1670,6 +1682,65 @@
       '<h2 class="group-section-title">' + title + '</h2>' +
       '<span class="group-section-count">' + count + ' 件</span>' +
     '</div>';
+  }
+
+  function renderFavoriteCard(b) {
+    var scheme = b.scheme;
+    var iconHtml;
+    if (scheme === 'file' || scheme === 'unc') {
+      iconHtml = document.getElementById('icon-file').innerHTML;
+    } else {
+      var faviconUrl = 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(b.domain || '') + '&sz=64';
+      iconHtml = '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
+    }
+    return (
+      '<article class="card card-favorite" data-fav-id="' + escapeHtml(b.id) + '">' +
+        '<div class="card-body">' +
+          '<div class="card-top">' +
+            '<div class="seal">' + iconHtml + '</div>' +
+            '<div class="card-title-wrap">' +
+              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(b.title) + '</a></h3>' +
+            '</div>' +
+          '</div>' +
+          '<div class="card-footer">' +
+            '<div class="card-actions">' +
+              '<button type="button" class="btn-quiet" data-action="unpin">ピン解除</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  // お気に入りは検索/タグ/グループの絞り込みルールを通常セクションと共有する(getSearchTagFilteredを再利用)。
+  // #group-sections とは独立したDOMツリーのため、data-card-idベースのイベント割り当てループ・
+  // bindGroupSectionDragEvents()・getNavigableCards()のいずれからも対象外になる(意図的な設計)。
+  function renderFavoritesSection() {
+    var container = document.getElementById('favorites-section');
+    var pinned = getSearchTagFiltered().filter(function (b) { return b.pinned; });
+    if (!pinned.length) {
+      container.innerHTML = '';
+      return;
+    }
+    var items = sortItems(pinned);
+    container.innerHTML =
+      '<section class="favorites-section">' +
+        '<div class="group-section-header"><h2 class="group-section-title">お気に入り</h2><span class="group-section-count">' + items.length + ' 件</span></div>' +
+        '<div class="group-grid">' + items.map(renderFavoriteCard).join('') +
+        '</div>' +
+      '</section>';
+
+    container.querySelectorAll('[data-fav-id]').forEach(function (el) {
+      var id = el.getAttribute('data-fav-id');
+      var b = bookmarks.filter(function (x) { return x.id === id; })[0];
+      if (!b) return;
+      var unpinBtn = el.querySelector('[data-action="unpin"]');
+      if (unpinBtn) unpinBtn.addEventListener('click', function () {
+        b.pinned = false;
+        saveData(bookmarks);
+        render();
+      });
+    });
   }
 
   function renderSections() {
