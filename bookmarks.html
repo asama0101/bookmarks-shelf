@@ -1102,6 +1102,11 @@
     <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
     <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
   </dl>
+  <div class="bookmarklet-generator">
+    <h3>ブックマークレット</h3>
+    <p>下のリンクをブラウザのブックマークバーへドラッグして登録すると、閲覧中のページをワンクリックでこのアプリに登録できます。</p>
+    <a href="#" id="bookmarklet-link" class="btn btn-ghost">ここに登録 &rarr; bookmark-shelf</a>
+  </div>
 </section>
 
 <div class="layout">
@@ -2641,6 +2646,16 @@
   function toggleHelp() {
     helpPanel.hidden = !helpPanel.hidden;
   }
+
+  // ブックマークレット生成リンクのhrefを動的に設定
+  (function setupBookmarkletLink() {
+    var link = document.getElementById('bookmarklet-link');
+    if (!link) return;
+    var baseUrl = location.origin + location.pathname;
+    var code = "javascript:location.href='" + baseUrl +
+      "?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)";
+    link.setAttribute('href', code);
+  })();
 
   // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → タグ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
   // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。閉じる層が何も無ければ、最後にフォーカスを外す。
