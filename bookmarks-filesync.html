@@ -1518,12 +1518,13 @@
   function classifyUrl(raw) {
     if (/^https:\/\//i.test(raw)) return 'https';
     if (/^http:\/\//i.test(raw)) return 'http';
+    if (/^\\\\/.test(raw)) return 'unc';
     if (/^file:\/\/\//i.test(raw)) return 'file';
     return null;
   }
 
   function deriveDomain(url, scheme) {
-    if (scheme === 'file') return null;
+    if (scheme === 'file' || scheme === 'unc') return null;
     try {
       return new URL(url).hostname;
     } catch (e) {
@@ -1540,6 +1541,10 @@
         try { path = decodeURIComponent(rawPath); } catch (e2) { path = rawPath; }
         var segments = path.split('/').filter(Boolean);
         return segments.length ? segments[segments.length - 1] : path;
+      }
+      if (scheme === 'unc') {
+        var uncSegments = url.split('\\').filter(Boolean);
+        return uncSegments.length ? uncSegments[uncSegments.length - 1] : url;
       }
       return new URL(url).hostname;
     } catch (e) {
