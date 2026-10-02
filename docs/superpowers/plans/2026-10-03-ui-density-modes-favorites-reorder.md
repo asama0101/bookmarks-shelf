@@ -19,6 +19,7 @@
 - お気に入りセクションのドラッグ処理は、既存のカード/グループドラッグ処理（`bindDragEvents`/`bindGroupSectionDragEvents`、いずれも`data-card-id`ベース）を流用せず独立実装とする。ただし両者が内部で使っている汎用プリミティブ`bindDragReorder(el, key, opts)`はお気に入り側でも再利用してよい（カード固有の処理ではない）。
 - 自動テストランナーが存在しないため（`CLAUDE.md`明記）、各タスクの検証は「対象関数をファイルから抽出し、Node.jsで最小限のスタブ（`document`/`localStorage`等）とともに実行して期待どおりの出力・副作用を確認する」方式で行う（前タスクでユーザー承認済みの代替検証手段）。検証スクリプトは`.superpowers/sdd/<ワークスペース>/scratch/`配下に置き、リポジトリにはコミットしない（プロジェクトに自動テストスイートという概念自体が無いため）。claude-in-chromeが利用可能なセッションでは、追加でブラウザ目視確認を行ってよい（必須ではない）。
 - CSS変数は既存の`:root`定義（`--ivory`/`--card`/`--ink`/`--ink-soft`/`--amber`/`--amber-ink`/`--wine`/`--sage`/`--shadow`/`--header-h`/`--font-display`/`--font-body`/`--font-mono`）をそのまま使う。新規パレットは追加しない。
+- CIステージ整備（CP-E）はスキップする。本プロジェクトにCI/ビルドパイプラインが存在しないため（前タスクのplanと同じ扱い）。
 
 ## Review Focus
 
@@ -837,7 +838,7 @@ git commit -m "feat: リストモードの行表示を追加(グループセク�
 
 **Interfaces:**
 - Consumes: `state.densityMode`、`bindDragReorder(el, key, opts)`（既存の汎用ユーティリティ）、Task 1の`favoriteOrder`フィールド。
-- Produces: `renderFavoriteCardComfy(b)`（既存`renderFavoriteCard()`の中身をリネーム。ゆったり/コンパクト共通で使う）、`renderFavoriteCardList(b)`（新規）、`renderFavoriteCard(b)`ディスパッチャ、`moveFavorite(draggedId, targetId, after)`、`bindFavoriteDragEvents(container)`。
+- Produces: `renderFavoriteCardComfy(b)`（既存`renderFavoriteCard()`の中身をリネーム。ゆったり/コンパクト共通で使う）、`renderFavoriteCardList(b)`（新規）、`renderFavoriteCard(b)`ディスパッチャ、`compareFavoriteOrder(a, b)`（favoriteOrder比較の単一ソース、null末尾送り）、`moveFavorite(draggedId, targetId, after)`、`bindFavoriteDragEvents(container)`。
 
 - [ ] **Step 1: `bookmarks.html`の既存`renderFavoriteCard`を`renderFavoriteCardComfy`にリネームし、ドラッグハンドルを追加**
 
@@ -899,19 +900,25 @@ git commit -m "feat: リストモードの行表示を追加(グループセク�
 
 **重要**: `renderFavoritesSection()`は現状`sortItems(pinned)`を呼んでおり、これは`state.sortMode`（手動順/よく使う順）に連動したソートである。spec R5の「お気に入りは常に`favoriteOrder`で固定表示し、`state.sortMode`の影響を受けない」を満たすには、この呼び出し自体を`favoriteOrder`基準のソートに置き換える必要がある（Task 1〜2段階ではまだ手を付けていない箇所）。
 
-`bookmarks.html:1753`の`var items = sortItems(pinned);`を以下に置き換える。
+まず`bookmarks.html`で`getGroupOrderForName()`または`getNextFavoriteOrder()`の直後に、favoriteOrder比較の単一ソースとなる関数を追加する（Step4の`moveFavorite()`もこれを使うため、表示ソートとドラッグ並び替えで「nullは末尾に送る」ルールが2箇所に別々実装されて食い違うことを防ぐ）。
+
+```js
+    // favoriteOrder比較の単一ソース。null(マイグレーション未実施等の異常系)は末尾に送る。
+    function compareFavoriteOrder(a, b) {
+      var ao = a.favoriteOrder != null ? a.favoriteOrder : Infinity;
+      var bo = b.favoriteOrder != null ? b.favoriteOrder : Infinity;
+      return ao - bo;
+    }
+```
+
+次に`bookmarks.html:1753`の`var items = sortItems(pinned);`を以下に置き換える。
 
 ```js
       // お気に入りは state.sortMode(手動順/よく使う順)の影響を受けず、常に favoriteOrder で固定表示する。
-      // favoriteOrder が無い(マイグレーション未実施等の異常系)ものは末尾に送る。
-      var items = pinned.slice().sort(function (a, b) {
-        var ao = a.favoriteOrder != null ? a.favoriteOrder : Infinity;
-        var bo = b.favoriteOrder != null ? b.favoriteOrder : Infinity;
-        return ao - bo;
-      });
+      var items = pinned.slice().sort(compareFavoriteOrder);
 ```
 
-`bookmarks-filesync.html`の`renderFavoritesSection()`内の同じ行（`var items = sortItems(pinned);`）にも同一の変更を加える。
+`bookmarks-filesync.html`にも同一の`compareFavoriteOrder()`関数を追加し、`renderFavoritesSection()`内の同じ行（`var items = sortItems(pinned);`）にも同一の置き換えを加える。
 
 - [ ] **Step 4: `draggedFavId`変数・`moveFavorite()`・`bindFavoriteDragEvents()`を追加**
 
@@ -921,14 +928,14 @@ git commit -m "feat: リストモードの行表示を追加(グループセク�
     var draggedFavId = null; // お気に入りセクション専用のドラッグ追跡変数(通常カードのdraggedCardIdとは独立)
 
     // お気に入りセクション内の並び替え専用。favoriteOrderのみ更新し、元のグループ内のorder・groupには一切影響しない。
+    // 並び順の基準はStep3で追加したcompareFavoriteOrder()を再利用する(表示ソートと並び替え計算を食い違わせないため)。
     function moveFavorite(draggedId, targetId, after) {
       if (!draggedId || draggedId === targetId) return;
       var dragged = bookmarks.find(function (x) { return x.id === draggedId; });
       var target = bookmarks.find(function (x) { return x.id === targetId; });
       if (!dragged || !target || !dragged.pinned || !target.pinned) return;
 
-      var pinned = bookmarks.filter(function (x) { return x.pinned; })
-        .sort(function (a, b) { return (a.favoriteOrder || 0) - (b.favoriteOrder || 0); });
+      var pinned = bookmarks.filter(function (x) { return x.pinned; }).sort(compareFavoriteOrder);
       pinned.splice(pinned.indexOf(dragged), 1);
       var toIdx = pinned.indexOf(target);
       if (after) toIdx += 1;
@@ -1037,6 +1044,8 @@ function extractFn(src, name) {
   global.saveData = function () {};
   global.render = function () {};
 
+  // moveFavorite()はcompareFavoriteOrder()に依存するため、先にスコープへ読み込む
+  eval(extractFn(src, 'compareFavoriteOrder').replace('function compareFavoriteOrder', 'var compareFavoriteOrder = function'));
   eval(extractFn(src, 'moveFavorite').replace('function moveFavorite', 'var moveFavorite = function'));
 
   // a(favoriteOrder=0)をc(favoriteOrder=2)の後ろへ移動 → 並びは b, c, a になるはず
@@ -1063,22 +1072,25 @@ function extractFn(src, name) {
   console.assert(src.indexOf('var draggedFavId') !== -1, file + ': draggedFavId変数が定義されていない');
   console.assert(/bindFavoriteDragEvents\(container\);/.test(src), file + ': renderFavoritesSection()からbindFavoriteDragEventsが呼ばれていない');
 
-  // renderFavoritesSection()がもはやsortItems()でなくfavoriteOrder基準でソートしていることを確認
+  // renderFavoritesSection()がもはやsortItems()でなくcompareFavoriteOrder基準でソートしていることを確認
   var favSectionSrc = extractFn(src, 'renderFavoritesSection');
   console.assert(favSectionSrc.indexOf('sortItems(pinned)') === -1, file + ': renderFavoritesSection()が依然としてsortItems(pinned)を呼んでいる(state.sortModeの影響を受けてしまう)');
-  console.assert(favSectionSrc.indexOf('favoriteOrder') !== -1, file + ': renderFavoritesSection()の並び替えにfavoriteOrderが使われていない');
+  console.assert(favSectionSrc.indexOf('compareFavoriteOrder') !== -1, file + ': renderFavoritesSection()の並び替えにcompareFavoriteOrderが使われていない');
 
-  // favoriteOrder基準ソート自体の動作確認(nullは末尾へ)
+  // compareFavoriteOrder()自体を実ソースから抽出して直接テストする(手書きの再実装ではなく、
+  // moveFavorite()・renderFavoritesSection()の両方が実際に呼んでいる関数そのものを検証する)
+  eval(extractFn(src, 'compareFavoriteOrder').replace('function compareFavoriteOrder', 'var compareFavoriteOrder = function'));
   var sortedPinned = [
     { id: 'x', favoriteOrder: 2 },
     { id: 'y', favoriteOrder: null },
     { id: 'z', favoriteOrder: 0 }
-  ].slice().sort(function (a, b) {
-    var ao = a.favoriteOrder != null ? a.favoriteOrder : Infinity;
-    var bo = b.favoriteOrder != null ? b.favoriteOrder : Infinity;
-    return ao - bo;
-  });
-  console.assert(sortedPinned.map(function (x) { return x.id; }).join(',') === 'z,x,y', file + ': favoriteOrderソートの順序またはnull末尾送りが期待通りでない: got ' + sortedPinned.map(function (x) { return x.id; }).join(','));
+  ].slice().sort(compareFavoriteOrder);
+  console.assert(sortedPinned.map(function (x) { return x.id; }).join(',') === 'z,x,y', file + ': compareFavoriteOrder()の順序またはnull末尾送りが期待通りでない: got ' + sortedPinned.map(function (x) { return x.id; }).join(','));
+
+  // moveFavorite()が独自のソート式を持たず、同じcompareFavoriteOrderを再利用していることを確認
+  // (nullの扱いが表示側とドラッグ側で食い違わないようにするため)
+  var moveFavoriteSrc = extractFn(src, 'moveFavorite');
+  console.assert(moveFavoriteSrc.indexOf('.sort(compareFavoriteOrder)') !== -1, file + ': moveFavorite()がcompareFavoriteOrderを再利用していない(独自のソート式を持っていると表示側とnullの扱いが食い違う可能性)');
 });
 console.log('OK: Task 5 verification passed');
 ```
