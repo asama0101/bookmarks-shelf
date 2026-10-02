@@ -1056,6 +1056,45 @@
     transform: rotate(-45deg);
   }
 
+  .card--list {
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 0;
+    border-bottom: 1px solid var(--sage);
+    box-shadow: none;
+    background: transparent;
+  }
+  .card--list .seal { width: 16px; height: 16px; }
+  .card--list .seal img, .card--list .seal svg { width: 10px; height: 10px; }
+  .card--list .card-title {
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .card--list .card-footer { margin-top: 0; flex: 0 0 auto; }
+
+  .row-memo-preview {
+    font-size: 0.72rem;
+    font-style: italic;
+    color: var(--ink-soft);
+    background: rgba(227, 167, 63, 0.14);
+    border-radius: 10px;
+    padding: 2px 9px;
+    margin-left: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+    flex: 0 1 auto;
+  }
+  .row-memo-preview svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 1.8; vertical-align: -1px; margin-right: 3px; }
+
+  .group-grid--list { display: flex; flex-direction: column; gap: 0; }
+
   /* ---------- 編集フォーム(カード内) ---------- */
 
   .edit-form { display: grid; gap: 8px; width: 100%; }
@@ -1940,7 +1979,7 @@
     container.innerHTML = sectionKeys.length
       ? sectionKeys.map(function (key) {
           var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
-          var gridModifier = state.densityMode === 'compact' ? ' group-grid--compact' : '';
+          var gridModifier = state.densityMode === 'compact' ? ' group-grid--compact' : state.densityMode === 'list' ? ' group-grid--list' : '';
           var body = items.length
             ? '<div class="group-grid' + gridModifier + '" data-group-grid="' + escapeHtml(key || '') + '">' +
                 items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
@@ -2521,8 +2560,47 @@
     );
   }
 
+  function renderCardList(b) {
+    var iconHtml = resolveIconHtml(b);
+    var memoFilled = !!b.memo;
+    var idFilled = !!b.loginId;
+    var pwFilled = !!b.loginPassword;
+
+    var memoPreviewHtml = memoFilled
+      ? '<span class="row-memo-preview"><svg><use href="#ic-memo"></use></svg>' + escapeHtml(b.memo) + '</span>'
+      : '';
+
+    var indicatorsHtml =
+      (idFilled
+        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
+      (pwFilled
+        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>');
+
+    var pathCopyHtml = (b.scheme === 'file' || b.scheme === 'unc')
+      ? '<button type="button" tabindex="-1" class="icon-btn" data-action="copy-path" aria-label="パスをコピー">&#10697;</button>'
+      : '';
+
+    return (
+      '<article class="card card--list" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
+        '<div class="seal">' + iconHtml + '</div>' +
+        '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
+        memoPreviewHtml +
+        '<div class="card-footer"><div class="card-actions">' +
+          '<button type="button" tabindex="-1" class="icon-btn' + (b.pinned ? ' amber' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
+          indicatorsHtml +
+          pathCopyHtml +
+          '<button type="button" tabindex="-1" class="icon-btn" data-action="edit" aria-label="編集">&#9998;</button>' +
+          '<button type="button" tabindex="-1" class="icon-btn" data-action="delete" aria-label="削除">&#10005;</button>' +
+        '</div></div>' +
+      '</article>'
+    );
+  }
+
   function renderCard(b) {
     if (state.densityMode === 'compact') return renderCardCompact(b);
+    if (state.densityMode === 'list') return renderCardList(b);
     return renderCardComfy(b);
   }
 
