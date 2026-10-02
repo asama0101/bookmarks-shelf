@@ -1422,10 +1422,19 @@
 
   // クリップボードAPIが使えない環境向けに、非表示textarea+execCommandへフォールバックする
   function copyToClipboard(text, btn) {
-    var original = btn.textContent;
+    var isIconOnly = btn.classList.contains('icon-btn') || btn.classList.contains('ind-btn');
     function showSuccess() {
-      btn.textContent = 'コピーしました';
-      setTimeout(function () { btn.textContent = original; }, 1500);
+      if (isIconOnly) {
+        var originalTitle = btn.getAttribute('title');
+        btn.setAttribute('title', 'コピーしました');
+        setTimeout(function () {
+          if (originalTitle !== null) btn.setAttribute('title', originalTitle); else btn.removeAttribute('title');
+        }, 1500);
+      } else {
+        var original = btn.textContent;
+        btn.textContent = 'コピーしました';
+        setTimeout(function () { btn.textContent = original; }, 1500);
+      }
     }
     function fallback() {
       var ta = document.createElement('textarea');
