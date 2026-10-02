@@ -1005,6 +1005,57 @@
     gap: 6px;
   }
 
+  .card--compact .card-stub { width: 14px; }
+  .card--compact .card-body { padding: 8px 9px; }
+  .card--compact .seal { width: 18px; height: 18px; }
+  .card--compact .seal img, .card--compact .seal svg { width: 11px; height: 11px; }
+  .card--compact .card-title { font-size: 0.78rem; }
+  .card--compact .card-footer { margin-top: 6px; gap: 2px; }
+  .card--compact .card-actions { gap: 2px; }
+
+  .group-grid--compact { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+
+  .icon-btn {
+    all: unset;
+    box-sizing: border-box;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+  }
+  .icon-btn.amber { color: var(--amber-ink); }
+  .icon-btn:hover { background: rgba(27, 53, 56, 0.08); }
+
+  .ind-btn {
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    position: relative;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+  .ind-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+  .ind-btn.filled { color: var(--amber-ink); cursor: pointer; }
+  .ind-btn.empty { color: var(--sage); opacity: 0.55; cursor: default; pointer-events: none; }
+  .ind-btn.empty::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 1.3px;
+    background: var(--sage);
+    transform: rotate(-45deg);
+  }
+
   /* ---------- 編集フォーム(カード内) ---------- */
 
   .edit-form { display: grid; gap: 8px; width: 100%; }
@@ -1198,6 +1249,12 @@
 <template id="icon-globe">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#3E5457" stroke-width="1.5"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" stroke="#3E5457" stroke-width="1.2"/></svg>
 </template>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="ic-memo" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z" fill="none" stroke="currentColor" stroke-width="1.8"></path><path d="M15 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8"></path></symbol>
+  <symbol id="ic-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M11 12l9-9M17 6l2 2M14 9l2 2" fill="none" stroke="currentColor" stroke-width="1.8"></path></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="1.8"></path></symbol>
+</svg>
 
 <script>
 (function () {
@@ -1874,8 +1931,9 @@
     container.innerHTML = sectionKeys.length
       ? sectionKeys.map(function (key) {
           var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
+          var gridModifier = state.densityMode === 'compact' ? ' group-grid--compact' : '';
           var body = items.length
-            ? '<div class="group-grid" data-group-grid="' + escapeHtml(key || '') + '">' +
+            ? '<div class="group-grid' + gridModifier + '" data-group-grid="' + escapeHtml(key || '') + '">' +
                 items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
               '</div>'
             : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
@@ -2343,7 +2401,7 @@
     moveGroupSection(key, names[targetIdx], direction > 0);
   }
 
-  function renderCard(b) {
+  function renderCardComfy(b) {
     var scheme = b.scheme;
     var iconHtml = resolveIconHtml(b);
 
@@ -2403,6 +2461,60 @@
         '</div>' +
       '</article>'
     );
+  }
+
+  function renderCardCompact(b) {
+    var scheme = b.scheme;
+    var iconHtml = resolveIconHtml(b);
+    var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
+    var checkboxHtml = state.selectMode
+      ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
+      : '';
+    var memoFilled = !!b.memo;
+    var idFilled = !!b.loginId;
+    var pwFilled = !!b.loginPassword;
+
+    var indicatorsHtml =
+      '<span class="ind-btn' + (memoFilled ? ' filled' : ' empty') + '" aria-hidden="true"><svg><use href="#ic-memo"></use></svg></span>' +
+      (idFilled
+        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
+      (pwFilled
+        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>');
+
+    var pathCopyHtml = (scheme === 'file' || scheme === 'unc')
+      ? '<button type="button" tabindex="-1" class="icon-btn" data-action="copy-path" aria-label="パスをコピー">&#10697;</button>'
+      : '';
+
+    return (
+      '<article class="card card--compact" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
+        '<div class="card-stub">' + grip + '</div>' +
+        '<div class="card-body">' +
+          '<div class="card-top">' +
+            checkboxHtml +
+            '<div class="seal">' + iconHtml + '</div>' +
+            '<div class="card-title-wrap">' +
+              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
+            '</div>' +
+          '</div>' +
+          '<div class="card-footer">' +
+            '<div class="card-actions">' +
+              '<button type="button" tabindex="-1" class="icon-btn' + (b.pinned ? ' amber' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
+              indicatorsHtml +
+              pathCopyHtml +
+              '<button type="button" tabindex="-1" class="icon-btn" data-action="edit" aria-label="編集">&#9998;</button>' +
+              '<button type="button" tabindex="-1" class="icon-btn" data-action="delete" aria-label="削除">&#10005;</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</article>'
+    );
+  }
+
+  function renderCard(b) {
+    if (state.densityMode === 'compact') return renderCardCompact(b);
+    return renderCardComfy(b);
   }
 
   function renderEditCard(b) {
