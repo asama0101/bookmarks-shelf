@@ -1225,7 +1225,23 @@
         });
       }
 
-      if (needsOrderMigration || needsGroupOrderMigration || needsFavFieldsMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      // お気に入り並び替え機能の導入前に保存されたデータには favoriteOrder が無いため、ピン留め済みのものだけ
+      // 現在の order(手動並び順)を基準に連番を割り当てる。pinned===false のものは対象外(favoriteOrder は null のまま)。
+      // 判定条件に pinned===true を必ず併せること — typeof チェックだけだと未ピン留めレコードが永久に
+      // 条件を満たし続け、毎回のロードでドラッグ並び替えた値を上書きしてしまう(design doc R1参照)。
+      var needsFavoriteOrderMigration = parsed.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; });
+      if (needsFavoriteOrderMigration) {
+        var pinnedByOrder = parsed.filter(function (b) { return b.pinned === true; })
+          .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+        pinnedByOrder.forEach(function (b, i) { b.favoriteOrder = i; });
+      }
+
+      // すべてのレコードについて favoriteOrder を初期化。ピン留めされていないものは null。
+      parsed.forEach(function (b) {
+        if (typeof b.favoriteOrder !== 'number') b.favoriteOrder = null;
+      });
+
+      if (needsOrderMigration || needsGroupOrderMigration || needsFavFieldsMigration || needsFavoriteOrderMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       return parsed;
     } catch (e) {
       return [];
@@ -1379,7 +1395,8 @@
       order: 0, // インポート確定後にファイル内の並び順で採番し直す
       pinned: typeof raw.pinned === 'boolean' ? raw.pinned : false,
       lastAccessed: typeof raw.lastAccessed === 'number' ? raw.lastAccessed : null,
-      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0
+      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0,
+      favoriteOrder: typeof raw.favoriteOrder === 'number' ? raw.favoriteOrder : null
     };
   }
 
@@ -1402,6 +1419,13 @@
     if (existing) return existing.groupOrder;
     var max = -1;
     bookmarks.forEach(function (b) { if (b.group && b.groupOrder > max) max = b.groupOrder; });
+    return max + 1;
+  }
+
+  // お気に入り内の新規ピン留めは常に末尾(既存最大値+1)に配置する。ピン留めが1件も無ければ0。
+  function getNextFavoriteOrder() {
+    var max = -1;
+    bookmarks.forEach(function (b) { if (b.pinned && typeof b.favoriteOrder === 'number' && b.favoriteOrder > max) max = b.favoriteOrder; });
     return max + 1;
   }
 
@@ -1780,6 +1804,7 @@
       var unpinBtn = el.querySelector('[data-action="unpin"]');
       if (unpinBtn) unpinBtn.addEventListener('click', function () {
         b.pinned = false;
+        b.favoriteOrder = null;
         saveData(bookmarks);
         render();
       });
@@ -1855,6 +1880,7 @@
       if (delBtn) delBtn.addEventListener('click', function () { handleDelete(b.id); });
       if (pinBtn) pinBtn.addEventListener('click', function () {
         b.pinned = !b.pinned;
+        b.favoriteOrder = b.pinned ? getNextFavoriteOrder() : null;
         saveData(bookmarks);
         render();
       });
@@ -2528,7 +2554,8 @@
       order: bookmarks.length,
       pinned: false,
       lastAccessed: null,
-      accessCount: 0
+      accessCount: 0,
+      favoriteOrder: null
     });
 
     saveData(bookmarks);

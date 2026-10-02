@@ -1377,6 +1377,11 @@
       var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
       sanitized.forEach(function (b, i) { b.order = i; });
       if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
+      if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) assignFavoriteOrder(sanitized);
+      // すべてのレコードについて favoriteOrder を初期化。ピン留めされていないものは null。
+      sanitized.forEach(function (b) {
+        if (typeof b.favoriteOrder !== 'number') b.favoriteOrder = null;
+      });
       return { data: sanitized, skipped: parsed.length - sanitized.length };
     });
   }
@@ -1683,7 +1688,8 @@
       order: 0, // 読み込み確定後にファイル内の並び順で採番し直す
       pinned: typeof raw.pinned === 'boolean' ? raw.pinned : false,
       lastAccessed: typeof raw.lastAccessed === 'number' ? raw.lastAccessed : null,
-      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0
+      accessCount: typeof raw.accessCount === 'number' && raw.accessCount >= 0 ? Math.floor(raw.accessCount) : 0,
+      favoriteOrder: typeof raw.favoriteOrder === 'number' ? raw.favoriteOrder : null
     };
   }
 
@@ -1699,6 +1705,15 @@
     list.forEach(function (b) { b.groupOrder = b.group ? indexByName[b.group] : 0; });
   }
 
+  // favoriteOrder が1件でも欠けているピン留め済みレコードがあれば、現在の order(手動並び順)を基準に
+  // ピン留め済みのものだけ連番で補完する。pinned===false のものは対象外(favoriteOrder は null のまま)。
+  // assignGroupOrder() と同様、後方互換のための一度きりの補完。以後は各操作が明示的に維持する。
+  function assignFavoriteOrder(list) {
+    var pinnedByOrder = list.filter(function (b) { return b.pinned === true; })
+      .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    pinnedByOrder.forEach(function (b, i) { b.favoriteOrder = i; });
+  }
+
   // 新規グループ名は末尾(既存最大値+1)に、既存グループ名はそのグループの現在値に合わせる。未分類(falsy)は常に0。
   function getGroupOrderForName(name) {
     if (!name) return 0;
@@ -1706,6 +1721,13 @@
     if (existing) return existing.groupOrder;
     var max = -1;
     bookmarks.forEach(function (b) { if (b.group && b.groupOrder > max) max = b.groupOrder; });
+    return max + 1;
+  }
+
+  // お気に入り内の新規ピン留めは常に末尾(既存最大値+1)に配置する。ピン留めが1件も無ければ0。
+  function getNextFavoriteOrder() {
+    var max = -1;
+    bookmarks.forEach(function (b) { if (b.pinned && typeof b.favoriteOrder === 'number' && b.favoriteOrder > max) max = b.favoriteOrder; });
     return max + 1;
   }
 
@@ -2058,6 +2080,7 @@
       var unpinBtn = el.querySelector('[data-action="unpin"]');
       if (unpinBtn) unpinBtn.addEventListener('click', function () {
         b.pinned = false;
+        b.favoriteOrder = null;
         saveData(bookmarks);
         render();
       });
@@ -2132,6 +2155,7 @@
       if (delBtn) delBtn.addEventListener('click', function () { handleDelete(b.id); });
       if (pinBtn) pinBtn.addEventListener('click', function () {
         b.pinned = !b.pinned;
+        b.favoriteOrder = b.pinned ? getNextFavoriteOrder() : null;
         saveData(bookmarks);
         render();
       });
@@ -2789,7 +2813,8 @@
       order: bookmarks.length,
       pinned: false,
       lastAccessed: null,
-      accessCount: 0
+      accessCount: 0,
+      favoriteOrder: null
     });
 
     saveData(bookmarks);
@@ -2869,6 +2894,11 @@
       var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
       sanitized.forEach(function (b, i) { b.order = i; });
       if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
+      if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) assignFavoriteOrder(sanitized);
+      // すべてのレコードについて favoriteOrder を初期化。ピン留めされていないものは null。
+      sanitized.forEach(function (b) {
+        if (typeof b.favoriteOrder !== 'number') b.favoriteOrder = null;
+      });
       var skipped = parsed.length - sanitized.length;
       var message = '現在のブックマーク(' + bookmarks.length + ' 件)を、インポートするデータ(' + sanitized.length + ' 件' +
         (skipped ? '、URL不正のため ' + skipped + ' 件は除外' : '') + ')で置き換えます(接続中のファイルにも書き込まれます)。よろしいですか?';
