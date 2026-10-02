@@ -1378,10 +1378,6 @@
       sanitized.forEach(function (b, i) { b.order = i; });
       if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
       if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) assignFavoriteOrder(sanitized);
-      // すべてのレコードについて favoriteOrder を初期化。ピン留めされていないものは null。
-      sanitized.forEach(function (b) {
-        if (typeof b.favoriteOrder !== 'number') b.favoriteOrder = null;
-      });
       return { data: sanitized, skipped: parsed.length - sanitized.length };
     });
   }
@@ -2895,10 +2891,6 @@
       sanitized.forEach(function (b, i) { b.order = i; });
       if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
       if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) assignFavoriteOrder(sanitized);
-      // すべてのレコードについて favoriteOrder を初期化。ピン留めされていないものは null。
-      sanitized.forEach(function (b) {
-        if (typeof b.favoriteOrder !== 'number') b.favoriteOrder = null;
-      });
       var skipped = parsed.length - sanitized.length;
       var message = '現在のブックマーク(' + bookmarks.length + ' 件)を、インポートするデータ(' + sanitized.length + ' 件' +
         (skipped ? '、URL不正のため ' + skipped + ' 件は除外' : '') + ')で置き換えます(接続中のファイルにも書き込まれます)。よろしいですか?';

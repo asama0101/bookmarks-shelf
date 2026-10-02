@@ -2635,6 +2635,11 @@
       var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
       sanitized.forEach(function (b, i) { b.order = i; });
       if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
+      if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) {
+        var pinnedByOrder = sanitized.filter(function (b) { return b.pinned === true; })
+          .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+        pinnedByOrder.forEach(function (b, i) { b.favoriteOrder = i; });
+      }
       var skipped = parsed.length - sanitized.length;
       var message = '現在のブックマーク(' + bookmarks.length + ' 件)を、インポートするデータ(' + sanitized.length + ' 件' +
         (skipped ? '、URL不正のため ' + skipped + ' 件は除外' : '') + ')で置き換えます。よろしいですか?';
