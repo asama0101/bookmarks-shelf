@@ -149,6 +149,27 @@
     border-color: var(--amber);
   }
 
+  .density-toggle {
+    display: inline-flex;
+    border: 1px solid rgba(245, 241, 230, 0.4);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .density-btn {
+    all: unset;
+    cursor: pointer;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--ivory);
+    border-right: 1px solid rgba(245, 241, 230, 0.4);
+  }
+  .density-btn:last-child { border-right: none; }
+  .density-btn:hover { background: rgba(245, 241, 230, 0.12); }
+  .density-btn.active { background: var(--amber); color: var(--amber-ink); }
+
   .btn-quiet {
     background: transparent;
     color: var(--ink-soft);
@@ -1021,6 +1042,11 @@
     <button class="btn btn-amber" id="toggle-add-btn" type="button">+ 追加</button>
     <button class="btn btn-ghost" id="toggle-select-btn" type="button">選択</button>
     <button class="btn btn-ghost" id="toggle-sort-mode-btn" type="button">よく使う順で表示</button>
+    <div class="density-toggle" id="density-toggle" role="group" aria-label="表示密度">
+      <button type="button" class="density-btn" data-density="comfy">ゆったり</button>
+      <button type="button" class="density-btn" data-density="compact">コンパクト</button>
+      <button type="button" class="density-btn" data-density="list">リスト</button>
+    </div>
     <button class="btn btn-ghost" id="export-btn" type="button">エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button">インポート</button>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
@@ -1178,8 +1204,16 @@
   'use strict';
 
   var STORAGE_KEY = 'bookmarks_data';
+  var DENSITY_MODE_KEY = 'bookmarks_density_mode';
   var SORT_MODE_KEY = 'bookmarks_sort_mode';
   var UNGROUPED = null; // 未分類(グループ未割り当て)を表す内部値
+
+  function loadDensityMode() {
+    try {
+      var v = localStorage.getItem(DENSITY_MODE_KEY);
+      return (v === 'comfy' || v === 'compact' || v === 'list') ? v : 'compact';
+    } catch (e) { return 'compact'; }
+  }
 
   function loadSortMode() {
     try { return localStorage.getItem(SORT_MODE_KEY) === 'frequency' ? 'frequency' : 'manual'; }
@@ -1196,7 +1230,8 @@
     selectMode: false,
     selectedIds: new Set(),
     sidebarTab: 'group',
-    sortMode: loadSortMode()
+    sortMode: loadSortMode(),
+    densityMode: loadDensityMode()
   };
 
   /* ---------- データ層 ---------- */
@@ -1521,6 +1556,10 @@
     var sortModeBtn = document.getElementById('toggle-sort-mode-btn');
     sortModeBtn.textContent = state.sortMode === 'frequency' ? '手動順で表示' : 'よく使う順で表示';
     sortModeBtn.classList.toggle('active', state.sortMode === 'frequency');
+
+    document.querySelectorAll('#density-toggle [data-density]').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-density') === state.densityMode);
+    });
 
     syncHeaderHeight();
   }
@@ -2511,6 +2550,14 @@
   document.getElementById('toggle-sort-mode-btn').addEventListener('click', function () {
     state.sortMode = state.sortMode === 'frequency' ? 'manual' : 'frequency';
     try { localStorage.setItem(SORT_MODE_KEY, state.sortMode); } catch (e) {}
+    render();
+  });
+
+  document.getElementById('density-toggle').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-density]');
+    if (!btn) return;
+    state.densityMode = btn.getAttribute('data-density');
+    try { localStorage.setItem(DENSITY_MODE_KEY, state.densityMode); } catch (err) {}
     render();
   });
 
