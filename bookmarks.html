@@ -1393,11 +1393,7 @@
       // 判定条件に pinned===true を必ず併せること — typeof チェックだけだと未ピン留めレコードが永久に
       // 条件を満たし続け、毎回のロードでドラッグ並び替えた値を上書きしてしまう(design doc R1参照)。
       var needsFavoriteOrderMigration = parsed.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; });
-      if (needsFavoriteOrderMigration) {
-        var pinnedByOrder = parsed.filter(function (b) { return b.pinned === true; })
-          .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-        pinnedByOrder.forEach(function (b, i) { b.favoriteOrder = i; });
-      }
+      if (needsFavoriteOrderMigration) assignFavoriteOrder(parsed);
 
       // すべてのレコードについて favoriteOrder を初期化。ピン留めされていないものは null。
       parsed.forEach(function (b) {
@@ -1582,6 +1578,15 @@
     var indexByName = {};
     names.forEach(function (name, i) { indexByName[name] = i; });
     list.forEach(function (b) { b.groupOrder = b.group ? indexByName[b.group] : 0; });
+  }
+
+  // favoriteOrder が1件でも欠けているピン留め済みレコードがあれば、現在の order(手動並び順)を基準に
+  // ピン留め済みのものだけ連番で補完する。pinned===false のものは対象外(favoriteOrder は null のまま)。
+  // assignGroupOrder() と同様、後方互換のための一度きりの補完。以後は各操作が明示的に維持する。
+  function assignFavoriteOrder(list) {
+    var pinnedByOrder = list.filter(function (b) { return b.pinned === true; })
+      .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    pinnedByOrder.forEach(function (b, i) { b.favoriteOrder = i; });
   }
 
   // 新規グループ名は末尾(既存最大値+1)に、既存グループ名はそのグループの現在値に合わせる。未分類(falsy)は常に0。
@@ -1984,10 +1989,11 @@
     }
     // お気に入りは state.sortMode(手動順/よく使う順)の影響を受けず、常に favoriteOrder で固定表示する。
     var items = pinned.slice().sort(compareFavoriteOrder);
+    var gridModifier = state.densityMode === 'list' ? ' group-grid--list' : '';
     container.innerHTML =
       '<section class="favorites-section">' +
         '<div class="group-section-header"><h2 class="group-section-title">お気に入り</h2><span class="group-section-count">' + items.length + ' 件</span></div>' +
-        '<div class="group-grid">' + items.map(renderFavoriteCard).join('') +
+        '<div class="group-grid' + gridModifier + '">' + items.map(renderFavoriteCard).join('') +
         '</div>' +
       '</section>';
 
@@ -2146,6 +2152,7 @@
     container.querySelectorAll('.group-section').forEach(function (section) {
       var groupValue = section.getAttribute('data-group') || null;
       section.addEventListener('dragover', function (e) {
+        if (!draggedCardId) return; // お気に入りカードのドラッグ中はdraggedCardIdが立たないため、無視して実データ破壊を防ぐ
         e.preventDefault();
         section.classList.add('drag-target');
       });
@@ -2153,6 +2160,7 @@
         if (e.target === section) section.classList.remove('drag-target');
       });
       section.addEventListener('drop', function (e) {
+        if (!draggedCardId) return; // 同上: お気に入りカードのドロップはここでは処理しない
         e.preventDefault();
         section.classList.remove('drag-target');
         var draggedId = e.dataTransfer.getData('text/plain');
@@ -2984,11 +2992,7 @@
       var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
       sanitized.forEach(function (b, i) { b.order = i; });
       if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
-      if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) {
-        var pinnedByOrder = sanitized.filter(function (b) { return b.pinned === true; })
-          .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-        pinnedByOrder.forEach(function (b, i) { b.favoriteOrder = i; });
-      }
+      if (sanitized.some(function (b) { return b.pinned === true && typeof b.favoriteOrder !== 'number'; })) assignFavoriteOrder(sanitized);
       var skipped = parsed.length - sanitized.length;
       var message = '現在のブックマーク(' + bookmarks.length + ' 件)を、インポートするデータ(' + sanitized.length + ' 件' +
         (skipped ? '、URL不正のため ' + skipped + ' 件は除外' : '') + ')で置き換えます。よろしいですか?';

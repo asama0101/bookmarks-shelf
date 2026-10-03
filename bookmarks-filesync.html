@@ -2276,10 +2276,11 @@
     }
     // お気に入りは state.sortMode(手動順/よく使う順)の影響を受けず、常に favoriteOrder で固定表示する。
     var items = pinned.slice().sort(compareFavoriteOrder);
+    var gridModifier = state.densityMode === 'list' ? ' group-grid--list' : '';
     container.innerHTML =
       '<section class="favorites-section">' +
         '<div class="group-section-header"><h2 class="group-section-title">お気に入り</h2><span class="group-section-count">' + items.length + ' 件</span></div>' +
-        '<div class="group-grid">' + items.map(renderFavoriteCard).join('') +
+        '<div class="group-grid' + gridModifier + '">' + items.map(renderFavoriteCard).join('') +
         '</div>' +
       '</section>';
 
@@ -2416,6 +2417,7 @@
     container.querySelectorAll('.group-section').forEach(function (section) {
       var groupValue = section.getAttribute('data-group') || null;
       section.addEventListener('dragover', function (e) {
+        if (!draggedCardId) return; // お気に入りカードのドラッグ中はdraggedCardIdが立たないため、無視して実データ破壊を防ぐ
         e.preventDefault();
         section.classList.add('drag-target');
       });
@@ -2423,6 +2425,7 @@
         if (e.target === section) section.classList.remove('drag-target');
       });
       section.addEventListener('drop', function (e) {
+        if (!draggedCardId) return; // 同上: お気に入りカードのドロップはここでは処理しない
         e.preventDefault();
         section.classList.remove('drag-target');
         var draggedId = e.dataTransfer.getData('text/plain');
