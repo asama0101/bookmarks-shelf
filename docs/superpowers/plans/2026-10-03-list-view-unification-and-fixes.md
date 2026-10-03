@@ -321,7 +321,7 @@
 
 - [ ] **Step 8: JS統合 — `renderCard`系3関数+ディスパッチャ → 単一`renderCard()`**
 
-両ファイル`:2559-2816`相当(bookmarks.html基準、filesyncは+265行)、変更前(`renderCardComfy`・`renderCardCompact`・`renderCardList`・ディスパッチャの4関数):
+両ファイル`bookmarks.html:2559-2716`相当(filesyncは+265行)、変更前(`renderCardComfy`・`renderCardCompact`・`renderCardList`・ディスパッチャの4関数):
 
 ```js
   function renderCardComfy(b) {
@@ -649,7 +649,7 @@
 
 - [ ] **Step 12: 残存確認 — grepで密度モード関連の削除漏れが無いことを確認する**
 
-Run: `grep -n "densityMode\|DENSITY_MODE_KEY\|card--compact\|group-grid--compact\|renderCardComfy\|renderCardCompact\|renderFavoriteCardComfy" bookmarks.html bookmarks-filesync.html`
+Run: `grep -n "densityMode\|DENSITY_MODE_KEY\|card--compact\|group-grid--compact\|card-favorite \.card-stub\|renderCardComfy\|renderCardCompact\|renderFavoriteCardComfy" bookmarks.html bookmarks-filesync.html`
 
 Expected: 出力無し(0件)。1件でも出力されたら削除漏れなので該当箇所を修正する。
 
@@ -917,7 +917,7 @@ EOF
   }
 ```
 
-変更後(`idFilled`/`pwFilled`に基づく`.ind-btn`表現を通常カードのリスト行と同じパターンで追加し、`unpin`の前に`edit`、`edit`の前に`indicatorsHtml`を配置):
+変更後(`idFilled`/`pwFilled`に基づく`.ind-btn`表現を通常カードのリスト行と同じパターンで追加し、既存の`unpin`ボタンの後に`indicatorsHtml`、その後に`edit`ボタンを配置):
 
 ```js
   function renderFavoriteCard(b) {
