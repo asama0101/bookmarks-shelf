@@ -864,13 +864,6 @@
     background-position: center 7px;
   }
 
-  .stub-grip {
-    color: var(--amber);
-    font-size: 0.95rem;
-    line-height: 1;
-    opacity: 0.75;
-  }
-
   .card.dragging { opacity: 0.45; }
   .card.drop-before { box-shadow: 0 -3px 0 var(--amber), 0 2px 8px var(--shadow); }
   .card.drop-after { box-shadow: 0 3px 0 var(--amber), 0 2px 8px var(--shadow); }
@@ -1073,9 +1066,9 @@
     min-width: 0;
   }
   .card--list .card-footer { margin-top: 0; flex: 0 0 auto; }
-  .card--list .card-stub { width: 14px; }
   .card--list .card-tags { margin: 0; gap: 4px; }
   .card--list .tag-stamp { transform: none; }
+  .row-grip { color: var(--sage); font-size: 0.8rem; cursor: grab; flex: 0 0 auto; }
 
   .row-memo-preview {
     font-size: 0.72rem;
@@ -2705,7 +2698,7 @@
 
   function renderCard(b) {
     var iconHtml = resolveIconHtml(b);
-    var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
+    var grip = !state.selectMode ? '<span class="row-grip" aria-hidden="true">&#8942;&#8942;</span>' : '';
     var tagsHtml = (b.tags || []).map(function (t) {
       return '<button type="button" tabindex="-1" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
     }).join('');
@@ -2726,7 +2719,7 @@
 
     return (
       '<article class="card card--list" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
-        '<div class="card-stub">' + grip + '</div>' +
+        grip +
         checkboxHtml +
         '<div class="seal">' + iconHtml + '</div>' +
         '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
