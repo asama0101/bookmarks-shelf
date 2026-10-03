@@ -40,7 +40,7 @@ grillの結果、以下が確定済み:
   - `bookmarks.html:1016`(filesync `1093`): `.group-grid--compact` — 削除。
   - `bookmarks.html:1059-1078`(filesync 同等箇所): `.card--list ...` — ルール内容を`.card`の基本セレクタへ統合し、`--list`修飾クラスは削除する。
   - `bookmarks.html:1096`(filesync `1173`): `.group-grid--list` — ルール内容を`.group-grid`の基本セレクタへ統合し、`--list`修飾クラスは削除する。
-  - `bookmarks.html:1098-1118`: `.card-favorite .card-stub` と `.card-favorite--list ...` — R3(お気に入りのリスト一本化)に伴い、同じ方針(`--list`の内容を基本セレクタへ統合、`.card-favorite .card-stub`は後述の通り維持)で処理する。
+  - `bookmarks.html:1098-1118`: `.card-favorite .card-stub` と `.card-favorite--list ...` — いずれも`renderFavoriteCardComfy()`専用のCSSであり、R3での同関数削除に伴い両方とも死蔵化するため削除する(お気に入りのグリップは`.fav-grip`が別途処理するため、`.card-favorite .card-stub`は不要)。
 - `.card-stub`の基底CSS(`bookmarks.html:782-811`)は密度モードとは無関係に`renderEditCard()`(`bookmarks.html:2721`)が常時使用している既存クラスであり、削除対象外。R2のリスト行グリップはこのクラスを再利用する。
 - 実装後の残存確認用grepは`densityMode|DENSITY_MODE_KEY|card--compact|group-grid--compact|card--list|group-grid--list|card-favorite--list|renderCardComfy|renderCardCompact|renderFavoriteCardComfy`に拡張する(「リスク・懸念点」節のgrepパターンもこれに合わせて更新する)。
 
