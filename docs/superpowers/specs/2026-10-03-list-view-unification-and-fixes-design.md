@@ -35,6 +35,14 @@ grillの結果、以下が確定済み:
 - `group-grid--compact`/`group-grid--list`という「モード別の修飾クラス」という構造自体をやめ、リスト用のレイアウトを`.group-grid`・`.card`の基本セルクタに直接統合する(今や分岐の無い唯一のモードに対して「modifier」クラスを維持する意味が無いため)。
 - 既存ユーザーのlocalStorageに残る`DENSITY_MODE_KEY`の値は読み書きしないことで実質無害化する(明示的な削除処理は不要、YAGNI)。
 - 密度モード専用だった`.ind-btn`等のCSS/マークアップのうち、コンパクトモード専用だったメモの丸アイコン表現(`renderCardCompact()`内でのみ使われていたもの)は削除する。ログインID/パスワードの`.ind-btn.filled`/`.ind-btn.empty`(コピー可否を色・斜線で示す表現)はリスト表示でも使われているため維持する。
+- 以下のCSSブロックも削除対象(`.card--list`/`.group-grid--list`は基本セレクタへ統合する側、それ以外は死蔵化するため削除する)。filesync側は同構造の対応箇所を同様に処理する:
+  - `bookmarks.html:1008-1014`(filesync `1085-1091`): `.card--compact ...` — 削除。
+  - `bookmarks.html:1016`(filesync `1093`): `.group-grid--compact` — 削除。
+  - `bookmarks.html:1059-1078`(filesync 同等箇所): `.card--list ...` — ルール内容を`.card`の基本セレクタへ統合し、`--list`修飾クラスは削除する。
+  - `bookmarks.html:1096`(filesync `1173`): `.group-grid--list` — ルール内容を`.group-grid`の基本セレクタへ統合し、`--list`修飾クラスは削除する。
+  - `bookmarks.html:1098-1118`: `.card-favorite .card-stub` と `.card-favorite--list ...` — R3(お気に入りのリスト一本化)に伴い、同じ方針(`--list`の内容を基本セレクタへ統合、`.card-favorite .card-stub`は後述の通り維持)で処理する。
+- `.card-stub`の基底CSS(`bookmarks.html:782-811`)は密度モードとは無関係に`renderEditCard()`(`bookmarks.html:2721`)が常時使用している既存クラスであり、削除対象外。R2のリスト行グリップはこのクラスを再利用する。
+- 実装後の残存確認用grepは`densityMode|DENSITY_MODE_KEY|card--compact|group-grid--compact|card--list|group-grid--list|card-favorite--list|renderCardComfy|renderCardCompact|renderFavoriteCardComfy`に拡張する(「リスク・懸念点」節のgrepパターンもこれに合わせて更新する)。
 
 ### R2: リスト行へのドラッグ用グリップ追加
 
@@ -46,8 +54,9 @@ grillの結果、以下が確定済み:
 - `renderFavoriteCardComfy()`を削除し、`renderFavoriteCardList()`のみを残す(R1と同時に実施)。`renderFavoriteCard()`のディスパッチャ分岐も解消する。
 - `renderFavoriteCardList()`に以下の`data-action`ボタンを追加する:
   - `copy-login-id` / `copy-login-password`: 通常カードのリスト行と同じ`.ind-btn`(filled/empty)表現を使い、クリックで既存の`copyToClipboard()`を呼ぶ。
-  - `edit`: 既存の編集フォームを開く処理を呼ぶ(通常カードの`data-action="edit"`ハンドラと同じ編集フォームを、対象の`id`で開く)。
-- お気に入りセクションは`data-card-id`ではなく`data-fav-id`を使う独立したDOM・イベントバインド(CLAUDE.md記載の既存制約)であるため、これら新規アクションは**お気に入りセクション自身のクリックハンドラ内に追加実装**し、通常カードの`data-card-id`ベースの汎用クリックループを再利用しない。コピー/編集のロジック自体(`copyToClipboard()`・編集フォームを開く関数)は共通関数を呼ぶだけで、複製しない。
+  - `edit`: 通常カードのeditハンドラ(`bookmarks.html:2093`、`state.editingId = b.id; render();`というインライン処理で、専用関数化されていない)と同じ2行を、お気に入りセクションのクリックハンドラ内に複製する。
+- お気に入りセクションは`data-card-id`ではなく`data-fav-id`を使う独立したDOM・イベントバインド(CLAUDE.md記載の既存制約)であるため、これら新規アクションは**お気に入りセクション自身のクリックハンドラ内に追加実装**し、通常カードの`data-card-id`ベースの汎用クリックループを再利用しない。コピー(`copyToClipboard()`呼び出し)は共通関数を呼ぶだけで複製しないが、edit(上記`state.editingId`設定)は通常カード側がインライン処理のため複製が必要。
+- `renderFavoritesSection()`は`state.editingId`を参照しないため、お気に入り行で`edit`を押しても**お気に入りセクション自身の表示は変化しない**。編集フォームは、そのブックマークが属する通常のグループセクション側に開く(既存の`render()`機構どおり)。ユーザーは編集フォームを見るためにそのグループセクションまでスクロールする必要がある。この挙動は仕様として明記し、お気に入りセクション側で何らかの視覚的フィードバックを追加実装することはしない(YAGNI、要求外)。
 - 既存のドラッグ並び替え機構(`favoriteOrder`・`bindFavoriteDragEvents`・`moveFavorite`・`.fav-grip`)は本要件の対象外、無変更。
 
 ### R4: 検索対象にメモを追加
@@ -59,7 +68,7 @@ grillの結果、以下が確定済み:
 
 - タグナビclickハンドラ(1797-1803)・グループナビclickハンドラ(1823-1829)で、`state.tag`/`state.group`を変更して`render()`を呼んだ直後に`window.scrollTo({ top: 0, behavior: 'auto' })`を呼ぶ。
 - 「すべて解除」ボタン(`#clear-all-filters-btn`)のクリックハンドラにも同様に適用する(フィルタ解除も表示内容が変わるため)。
-- 既存のスクロール可能領域が`window`ではなく特定のコンテナ(例: `main`要素に`overflow: auto`)である場合は、実装時にそのコンテナの`scrollTop`を0にする形に置き換える(CSS構造を実装時に確認)。
+- スクロール対象は`window`で確定する(実装時の確認は不要): `.main`(`bookmarks.html:449-453`)に`overflow`指定は無く、`overflow-y: auto`は`.sidebar`(`:369`、`@media (min-width:761px)`内)と`.modal`(`:593`)専用でどちらも本要件のスクロール対象ではない。`html, body`(`:27-34`)にも`overflow`指定が無いため、ページ全体のスクロールは常に`window`レベルで発生する。
 
 ### R6: リスト行にタグ表記を追加
 
@@ -96,5 +105,4 @@ grillの結果、以下が確定済み:
 ## リスク・懸念点
 
 - R1はR3・R6の前提(リスト行のみが存在する状態)を作る変更のため、実装順序はR1 → (R2, R3, R6) → R4, R5, R7 という依存関係がある。R2/R3/R6はR1完了後でなければ対象のレンダリング関数が確定しない。
-- R1の削除範囲が広い(密度トグルUI・CSS・state・localStorageキー・3つのレンダー関数)ため、削除漏れ(特にCSSの`--compact`系セレクタ)が残存するリスクがある。実装後に`grep -n "densityMode\|DENSITY_MODE_KEY\|card--compact\|renderCardComfy\|renderCardCompact\|renderFavoriteCardComfy"`で両ファイルに残存が無いことを確認する。
-- R5のスクロール対象が`window`か特定コンテナかは実測が必要(現状スクロール処理が一切存在しないため、実装時にブラウザのレイアウト構造を確認する)。
+- R1の削除範囲が広い(密度トグルUI・CSS・state・localStorageキー・3つのレンダー関数)ため、削除漏れが残存するリスクがある。実装後に`grep -n "densityMode\|DENSITY_MODE_KEY\|card--compact\|group-grid--compact\|card--list\|group-grid--list\|card-favorite--list\|renderCardComfy\|renderCardCompact\|renderFavoriteCardComfy"`で両ファイルに残存が無いことを確認する。
