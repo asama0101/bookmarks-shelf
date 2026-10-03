@@ -50,8 +50,7 @@ Each file's script is a single IIFE with these layers, in order:
      The latter alone would also match every already-unpinned bookmark (whose `favoriteOrder` is permanently `null` by design) and retrigger the migration on every single load.
 
      The manual-vs-frequency display toggle (`state.sortMode`) persists to its own `localStorage` key (`SORT_MODE_KEY`, separate from the bookmark data key) via `loadSortMode()`, which also coerces any unrecognized stored value back to `'manual'`.
-     A third, unrelated `localStorage` key (`DENSITY_MODE_KEY`) persists `state.densityMode` the same way (see the density-mode paragraph in the Render layer below).
-     `bookmarks.html` therefore has three independent `localStorage` keys (data, sort mode, density mode), each coerced back to a safe default on an unrecognized stored value.
+     `bookmarks.html` therefore has two independent `localStorage` keys (data, sort mode), each coerced back to a safe default on an unrecognized stored value. A former third key, `DENSITY_MODE_KEY`, backed a now-removed multi-density display toggle (see the Render layer below) — its reads/writes were deleted along with the feature, so any leftover value in a user's existing `localStorage` is simply never looked at again.
    - `bookmarks-filesync.html`: adds an IndexedDB-backed store (`idbGetHandle`/`idbSetHandle`/
      `idbClearHandle`) that remembers the last-used `FileSystemFileHandle` so the app can offer to
      reconnect on next load without re-prompting the file picker. `boot()` drives the
@@ -89,6 +88,9 @@ Each file's script is a single IIFE with these layers, in order:
    string concatenation (no virtual DOM/diffing). With no group filter active, bookmarks are grouped
    into every existing group plus an "未分類" (ungrouped) section shown side-by-side.
 
+   `getSearchTagFiltered()`'s match string is `title + url + tags + memo` (lowercased); `loginId`,
+   `domain`, and `group` name are not searched.
+
    Search and tag filters both narrow which *sections* render, not just which bookmarks show inside
    them: when `state.search.trim()` is non-empty *or* `state.tag !== null`, `renderSections()`
    narrows the side-by-side set to only the groups with at least one match under the active
@@ -115,9 +117,15 @@ Each file's script is a single IIFE with these layers, in order:
    A "すべて解除" button next to the tabs clears both `state.tag` and `state.group` at once and is
    visible whenever either filter is active (`updateSidebarClearButtons()`, run on every
    `render()`) — clearing a single axis is still done via its nav button (re-click to toggle off)
-   or the corresponding × on the filter indicator chip, same as before tabs existed. The `t`/`g`
-   keyboard shortcuts switch to the corresponding tab before focusing its list, even when that tab
-   isn't currently shown. The default tab on load is グループ (group), not タグ (tag) — this default
+   or the corresponding × on the filter indicator chip, same as before tabs existed. Tab switching
+   is click-only, via the `#sidebar-tab-tag`/`#sidebar-tab-group` buttons calling `switchSidebarTab()`
+   — there is no keyboard shortcut for it (a `t`/`g` shortcut pair existed earlier but was removed,
+   along with `n` for opening the add form, `?` for the help panel, and `x` for clearing all filters;
+   every one of those actions remains reachable by clicking its header/nav button, only the keyboard
+   shortcut was dropped). Clicking a tag-nav button, a group-nav button, a list-row tag chip (see the
+   Render layer paragraph on card markup below), or this "すべて解除" button also scrolls the page
+   back to the top (`window.scrollTo({ top: 0, behavior: 'auto' })`), since any of these changes
+   which content is visible further down the page. The default tab on load is グループ (group), not タグ (tag) — this default
    is expressed in two separate places that must be kept in sync by hand: `state.sidebarTab`'s
    initial value (`'group'`) and the tab buttons'/panels' hardcoded `aria-selected`/`hidden`
    attributes in the markup. `switchSidebarTab()` is never called on startup, so nothing reconciles
@@ -128,11 +136,18 @@ Each file's script is a single IIFE with these layers, in order:
    A pinned bookmark (`b.pinned`) additionally renders in a standalone **favorites section**
    (`#favorites-section`, populated by `renderFavoritesSection()`, called from `render()` right
    before `renderSections()`) — a DOM tree kept entirely separate from `#group-sections`. It's built
-   from simplified `renderFavoriteCard()` markup (`data-fav-id`, not `data-card-id`) that only
-   supports opening the link and unpinning, so it's intentionally invisible to every mechanism keyed
+   from `renderFavoriteCard()` markup (`data-fav-id`, not `data-card-id`), which supports opening the
+   link, unpinning, copying the login ID/password (via the same shared `.ind-btn`/
+   `renderCredentialIndicators()` helper `renderCard()` uses), and editing. All four are wired by
+   `renderFavoritesSection()`'s own click-binding loop (`container.querySelectorAll('[data-fav-id]')`),
+   not the group section's per-card loop — so it's intentionally invisible to every mechanism keyed
    on `data-card-id`: the per-card event-binding loop in `renderSections()`, `bindGroupSectionDragEvents()`,
-   and the roving-tabindex keyboard navigation (`getNavigableCards()`). A pinned bookmark still
-   renders in its normal group section too — favorites is a duplicate view, not a move.
+   and the roving-tabindex keyboard navigation (`getNavigableCards()`). Clicking a favorite row's edit
+   button sets `state.editingId = b.id` and re-renders the same as any other edit trigger, but
+   `renderFavoritesSection()` never checks `state.editingId`, so the favorites section's own markup
+   doesn't change — the edit form opens in the bookmark's normal group section instead (`renderSections()`
+   swaps in `renderEditCard()` there), and the user has to scroll to that section to see it. A pinned
+   bookmark still renders in its normal group section too — favorites is a duplicate view, not a move.
 
    The favorites section reuses `getSearchTagFiltered()` so an active search/tag filter narrows it
    the same way it narrows group sections, but it is unconditionally hidden whenever
@@ -156,24 +171,30 @@ Each file's script is a single IIFE with these layers, in order:
    fields through `sanitizeBookmark()`/new-bookmark defaults for cross-file JSON portability, but has
    no UI to write to them and never increments them.
 
-   Both files additionally support three display density modes — `'comfy'`, `'compact'`, `'list'` — held in `state.densityMode`.
-   The mode persists to its own `localStorage` key (`DENSITY_MODE_KEY`, separate from both the bookmark data key and `SORT_MODE_KEY`), defaulting to `'compact'` whenever the stored value is missing or unrecognized.
-   A header button group (`#density-toggle`) writes the choice to both `state.densityMode` and `DENSITY_MODE_KEY` and re-renders.
-   `renderCard()` and `renderFavoriteCard()` are both dispatchers that branch on `state.densityMode`.
-   `renderCard()` picks one of `renderCardComfy`/`renderCardCompact`/`renderCardList`.
-   `renderFavoriteCard()` picks one of only two — `renderFavoriteCardComfy`/`renderFavoriteCardList` — since compact favorites reuse the comfy favorite-card markup (there's no separate compact favorite card).
-   Every existing call site of `renderCard()`/`renderFavoriteCard()` is unchanged by this, so the density branch is invisible outside these two dispatcher functions.
-   Compact and list modes both drop the tag row entirely.
-   In both compact and list modes, login-ID and login-password render as fixed indicator icons (`#ic-key`/`#ic-lock` `<svg>` symbols) whose look depends on whether the field is filled.
-   A filled login-ID/login-password renders as a colored `.ind-btn.filled` `<button data-action="copy-login-id">` / `data-action="copy-login-password">` that copies its value on click.
-   An empty one renders as a dimmed, slashed `.ind-btn.empty` `<span>` that isn't clickable.
-   Memo is handled differently per mode, so don't assume it shares the login-ID/password indicator in both.
-   In compact mode (`renderCardCompact()`), memo gets the same filled/empty indicator icon (`#ic-memo`).
-   That memo icon is always a non-interactive `<span>`, even when filled, since memo has no copy action.
-   In list mode (`renderCardList()`), memo has no indicator icon at all.
-   Instead, a non-empty memo renders its text inline next to the title as a truncated `.row-memo-preview` `<span>` (plain text with a small `#ic-memo` glyph prefix, not clickable).
-   An empty memo renders nothing in list mode.
-   Pin/edit/delete are icon-only buttons in both compact and list modes, instead of the labeled buttons comfy mode uses.
+   Both files render every card in a single, fixed list-row layout. A three-way display density
+   toggle (`'comfy'`/`'compact'`/`'list'`, `state.densityMode`, its own `localStorage` key
+   `DENSITY_MODE_KEY`, the `#density-toggle` header control, and the `renderCardComfy`/
+   `renderCardCompact`/`renderFavoriteCardComfy` render functions) existed earlier but was removed
+   entirely once user testing showed the list layout alone was sufficient — `renderCard()` and
+   `renderFavoriteCard()` are now plain functions, not dispatchers; there is exactly one rendering
+   path per card type. The markup still carries the `.card--list`/`.group-grid--list`/
+   `.card-favorite--list` modifier classes as unconditional, always-written literal class names
+   (not a state-driven branch) rather than folding their rules into the base `.card`/`.group-grid`/
+   `.seal`/`.card-title`/`.card-footer` selectors — those base selectors are shared with
+   `renderEditCard()` (the edit-form card), which needs to keep its own look regardless of the list
+   layout, so rewriting them directly would leak list styling into the edit form.
+
+   Each list row has a drag grip (`.card-stub`, the same class `renderEditCard()` renders an empty
+   instance of) and, only when the bookmark has tags, a `.card-tags` row of `.tag-stamp` chips
+   (visually matching the sidebar's tag-nav chips) — clicking one toggles `state.tag` the same way
+   clicking a sidebar tag-nav entry does. Login-ID and login-password render as shared `.ind-btn`
+   indicators built by `renderCredentialIndicators(b, tabindexAttr)` (also used by `renderFavoriteCard()`):
+   a filled field is a colored, clickable `.ind-btn.filled` `<button data-action="copy-login-id">` /
+   `data-action="copy-login-password">` that copies its value via `copyToClipboard()`; an empty one
+   is a dimmed, slashed `.ind-btn.empty` `<span>` that isn't clickable. Memo has no indicator icon —
+   a non-empty memo instead renders its text inline next to the title as a truncated
+   `.row-memo-preview` `<span>` (plain text with a small `#ic-memo` glyph prefix, not clickable); an
+   empty memo renders nothing. Pin/edit/delete remain icon-only buttons.
 
    Both files build a bookmarklet link (`#bookmarklet-link`, inside the help panel) the same way:
    an IIFE (`setupBookmarkletLink()`) strips any `?query` / `#fragment` off `location.href` to get a
@@ -194,7 +215,7 @@ Each file's script is a single IIFE with these layers, in order:
    and silently corrupt the manual order it's supposed to be preserving for when the user switches
    back.
 
-   The favorites section supports its own drag-to-reorder, independent of the group-section drag-and-drop above and available in every density mode.
+   The favorites section supports its own drag-to-reorder, independent of the group-section drag-and-drop above.
    `bindFavoriteDragEvents()` wires `[data-fav-id]` elements (not `[data-card-id]`) through the same `bindDragReorder()` helper `bindDragEvents()` uses.
    It tracks its own drag state in a module-scoped `draggedFavId` rather than sharing `draggedCardId`, since a favorites-section drag and a group-grid drag are otherwise unrelated gestures that shouldn't share mutable state.
    Dropping within the favorites section calls `moveFavorite()`, which only renumbers the pinned bookmarks' `favoriteOrder`.
@@ -275,3 +296,6 @@ pinned, lastAccessed, accessCount, favoriteOrder }`.
   array position, so it can't be blindly renumbered the way `order` is. Missing `groupOrder` values
   (e.g. data saved before this field existed) are backfilled once via `assignGroupOrder()`, seeded
   from the then-current alphabetical order — the same one-time-migration-shim pattern `order` uses.
+
+---
+Last updated: 2026-10-03
