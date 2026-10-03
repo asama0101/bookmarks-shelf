@@ -943,7 +943,24 @@
   }
   .icon-btn.amber { color: var(--amber-ink); }
   .icon-btn:hover { background: rgba(27, 53, 56, 0.08); }
-  .icon-btn.copied, .ind-btn.copied { background: var(--amber); color: var(--amber-ink); }
+
+  .copy-toast {
+    position: fixed;
+    z-index: 1000;
+    background: var(--ink);
+    color: var(--ivory);
+    font-family: var(--font-body);
+    font-size: 0.72rem;
+    padding: 3px 9px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px var(--shadow);
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s, transform 0.15s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .copy-toast.visible { opacity: 1; transform: translateY(0); }
 
   .ind-btn {
     box-sizing: border-box;
@@ -1399,17 +1416,35 @@
     return str.split(',').map(function (t) { return t.trim(); }).filter(Boolean);
   }
 
+  // アイコンのみのボタン(.icon-btn/.ind-btn)はテキストを持たないため、
+  // ボタン直上に浮き出る小さなチップでコピー完了を知らせる。
+  // position: fixedでdocument.bodyに追加することで、.cardのoverflow:hiddenによる切り詰めを避ける。
+  function showCopyToast(btn) {
+    var rect = btn.getBoundingClientRect();
+    var toast = document.createElement('div');
+    toast.className = 'copy-toast';
+    toast.textContent = 'コピーしました';
+    document.body.appendChild(toast);
+    var toastRect = toast.getBoundingClientRect();
+    toast.style.left = (rect.left + rect.width / 2 - toastRect.width / 2) + 'px';
+    toast.style.top = (rect.top - toastRect.height - 6) + 'px';
+    requestAnimationFrame(function () { toast.classList.add('visible'); });
+    setTimeout(function () {
+      toast.classList.remove('visible');
+      setTimeout(function () { toast.remove(); }, 150);
+    }, 1200);
+  }
+
   // クリップボードAPIが使えない環境向けに、非表示textarea+execCommandへフォールバックする
   function copyToClipboard(text, btn) {
     var isIconOnly = btn.classList.contains('icon-btn') || btn.classList.contains('ind-btn');
     function showSuccess() {
       if (isIconOnly) {
-        // titleのhoverツールチップだけではクリック直後に見えないため、.copiedクラスで即時の視覚フィードバックを与える
-        btn.classList.add('copied');
+        // titleのhoverツールチップだけではクリック直後に見えないため、ボタン付近に浮き出るチップで視覚フィードバックを与える
+        showCopyToast(btn);
         var originalTitle = btn.getAttribute('title');
         btn.setAttribute('title', 'コピーしました');
         setTimeout(function () {
-          btn.classList.remove('copied');
           if (originalTitle !== null) btn.setAttribute('title', originalTitle); else btn.removeAttribute('title');
         }, 1500);
       } else {
