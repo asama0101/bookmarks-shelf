@@ -2562,6 +2562,9 @@
 
   function renderCardList(b) {
     var iconHtml = resolveIconHtml(b);
+    var checkboxHtml = state.selectMode
+      ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
+      : '';
     var memoFilled = !!b.memo;
     var idFilled = !!b.loginId;
     var pwFilled = !!b.loginPassword;
@@ -2584,6 +2587,7 @@
 
     return (
       '<article class="card card--list" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
+        checkboxHtml +
         '<div class="seal">' + iconHtml + '</div>' +
         '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
         memoPreviewHtml +
