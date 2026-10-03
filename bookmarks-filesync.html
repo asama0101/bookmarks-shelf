@@ -563,10 +563,6 @@
   .favorites-section .group-section-title { color: var(--amber-ink); }
   .card-favorite { padding: 10px 12px; }
   .card-favorite .card-actions { justify-content: flex-end; }
-  .group-grid--favorites {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 6px;
-  }
 
   .group-order-btn {
     background: transparent;
@@ -1109,6 +1105,11 @@
   .row-memo-preview svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 1.8; vertical-align: -1px; margin-right: 3px; }
 
   .group-grid--list { display: flex; flex-direction: column; gap: 0; }
+
+  .group-grid--favorites {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 6px;
+  }
 
   .card-favorite--grid {
     flex-direction: column;
