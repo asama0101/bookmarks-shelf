@@ -884,12 +884,6 @@
     position: relative;
   }
 
-  .card-top {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
   .card-select {
     flex-shrink: 0;
     width: 17px;
@@ -912,8 +906,6 @@
     overflow: hidden;
   }
   .seal img, .seal svg { width: 16px; height: 16px; }
-
-  .card-title-wrap { min-width: 0; flex: 1; }
 
   .card-title {
     font-family: var(--font-display);
@@ -1004,47 +996,6 @@
     font-size: 0.72rem;
     color: var(--ink-soft);
     margin: 0 0 6px;
-  }
-
-  .card-credentials {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin: 10px 0 4px;
-  }
-
-  .cred-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-  }
-
-  .cred-label {
-    color: var(--ink-soft);
-    font-size: 0.68rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    width: 24px;
-    flex-shrink: 0;
-  }
-
-  .cred-value {
-    flex: 1;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  .card-memo {
-    font-size: 0.82rem;
-    color: var(--ink-soft);
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    margin: 8px 0 0;
-    padding: 8px 10px;
-    background: rgba(27, 53, 56, 0.04);
-    border-radius: 4px;
   }
 
   .card-footer {
@@ -1205,7 +1156,7 @@
 <header class="app-header">
   <div class="brand"><span class="brand-mark">&#10022;</span>bookmark-shelf</div>
   <div class="search-slot">
-    <input id="search-input" type="text" placeholder="タイトル・URL・タグで検索..." aria-label="ブックマークを検索">
+    <input id="search-input" type="text" placeholder="タイトル・URL・タグ・メモで検索..." aria-label="ブックマークを検索">
     <button type="button" id="search-clear-btn" class="search-clear-btn" aria-label="検索をクリア" hidden>&times;</button>
   </div>
   <div class="header-actions">
@@ -1215,6 +1166,7 @@
     <button class="btn btn-ghost" id="toggle-select-btn" type="button" disabled>選択</button>
     <button class="btn btn-ghost" id="export-btn" type="button" disabled>エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button" disabled>インポート</button>
+    <button class="btn btn-ghost" id="help-btn" type="button">ヘルプ</button>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
   </div>
   <div class="filter-indicator" id="filter-indicator"></div>
@@ -1721,6 +1673,20 @@
     return '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
   }
 
+  // renderCard/renderFavoriteCard共通のID/パスワードインジケータ生成。差異は通常カード側のtabindex="-1"のみ。
+  function renderCredentialIndicators(b, tabindexAttr) {
+    var idFilled = !!b.loginId;
+    var pwFilled = !!b.loginPassword;
+    return (
+      (idFilled
+        ? '<button type="button"' + tabindexAttr + ' class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
+      (pwFilled
+        ? '<button type="button"' + tabindexAttr + ' class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>')
+    );
+  }
+
   /* ---------- ユーティリティ ---------- */
 
   function escapeHtml(str) {
@@ -2164,16 +2130,7 @@
 
   function renderFavoriteCard(b) {
     var iconHtml = resolveIconHtml(b);
-    var idFilled = !!b.loginId;
-    var pwFilled = !!b.loginPassword;
-
-    var indicatorsHtml =
-      (idFilled
-        ? '<button type="button" class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
-      (pwFilled
-        ? '<button type="button" class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>');
+    var indicatorsHtml = renderCredentialIndicators(b, '');
 
     return (
       '<article class="card card-favorite card-favorite--list" data-fav-id="' + escapeHtml(b.id) + '">' +
@@ -2313,20 +2270,9 @@
           var t = btn.getAttribute('data-tag');
           state.tag = (state.tag === t) ? null : t;
           render();
+          window.scrollTo({ top: 0, behavior: 'auto' });
         });
       });
-
-      var revealBtn = card.querySelector('[data-action="toggle-reveal"]');
-      var pwDisplay = card.querySelector('[data-action="password-display"]');
-      if (revealBtn && pwDisplay) {
-        revealBtn.addEventListener('click', function () {
-          var revealed = revealBtn.getAttribute('data-revealed') === 'true';
-          revealed = !revealed;
-          revealBtn.setAttribute('data-revealed', String(revealed));
-          pwDisplay.textContent = revealed ? b.loginPassword : '••••••••';
-          revealBtn.textContent = revealed ? '隠す' : '表示';
-        });
-      }
 
       var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
       if (copyIdBtn) copyIdBtn.addEventListener('click', function () { copyToClipboard(b.loginId, copyIdBtn); });
@@ -2767,20 +2713,12 @@
       ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
       : '';
     var memoFilled = !!b.memo;
-    var idFilled = !!b.loginId;
-    var pwFilled = !!b.loginPassword;
 
     var memoPreviewHtml = memoFilled
       ? '<span class="row-memo-preview"><svg><use href="#ic-memo"></use></svg>' + escapeHtml(b.memo) + '</span>'
       : '';
 
-    var indicatorsHtml =
-      (idFilled
-        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
-      (pwFilled
-        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>');
+    var indicatorsHtml = renderCredentialIndicators(b, ' tabindex="-1"');
 
     var pathCopyHtml = (b.scheme === 'file' || b.scheme === 'unc')
       ? '<button type="button" tabindex="-1" class="icon-btn" data-action="copy-path" aria-label="パスをコピー">&#10697;</button>'
@@ -3093,19 +3031,15 @@
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   }
 
-  // ヘッダーのボタンはfilesync版ではファイル未接続時にdisabledになる。
-  // ショートカットもクリックと同じく無反応にするため、disabledを明示的に確認してから発火する。
-  function clickHeaderButton(id) {
-    var btn = document.getElementById(id);
-    if (!btn || btn.disabled) return;
-    btn.click();
-  }
-
   var helpPanel = document.getElementById('help-panel');
 
   function toggleHelp() {
     helpPanel.hidden = !helpPanel.hidden;
   }
+
+  document.getElementById('help-btn').addEventListener('click', function () {
+    toggleHelp();
+  });
 
   // ブックマークレット生成リンクのhrefを動的に設定
   (function setupBookmarkletLink() {
