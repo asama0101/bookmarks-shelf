@@ -1045,6 +1045,7 @@
     min-width: 0;
   }
   .card--list .card-footer { margin-top: 0; flex: 0 0 auto; }
+  .card--list .card-stub { width: 14px; }
 
   .row-memo-preview {
     font-size: 0.72rem;
@@ -2479,6 +2480,7 @@
 
   function renderCard(b) {
     var iconHtml = resolveIconHtml(b);
+    var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
     var checkboxHtml = state.selectMode
       ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
       : '';
@@ -2504,6 +2506,7 @@
 
     return (
       '<article class="card card--list" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
+        '<div class="card-stub">' + grip + '</div>' +
         checkboxHtml +
         '<div class="seal">' + iconHtml + '</div>' +
         '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
