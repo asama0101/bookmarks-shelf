@@ -32,17 +32,16 @@ grillの結果、以下が確定済み:
 - `renderCardComfy()`・`renderCardCompact()`・`renderFavoriteCardComfy()`を削除する。
 - `renderCard()`・`renderFavoriteCard()`はディスパッチャをやめる。現在の`renderCardList()`・`renderFavoriteCardList()`の関数本体を、それぞれ`renderCard()`・`renderFavoriteCard()`という元の(密度モード導入前の)名前へ統合し直す。`renderCardList`/`renderFavoriteCardList`という名前自体も削除する(唯一のモードに「List」という限定語を残す意味が無いため)。呼び出し元(`renderCard(b)`/`renderFavoriteCard(b)`を呼んでいる箇所)は名前を変える必要が無い。
 - `#density-toggle`のマークアップ・CSS、`state.densityMode`、`DENSITY_MODE_KEY`とその読み書き(`loadDensityMode()`含む)、トグルのclickリスナーを削除する。
-- `group-grid--compact`/`group-grid--list`という「モード別の修飾クラス」という構造自体をやめ、リスト用のレイアウトを`.group-grid`・`.card`の基本セルクタに直接統合する(今や分岐の無い唯一のモードに対して「modifier」クラスを維持する意味が無いため)。
+- `group-grid--compact`は削除する。`group-grid--list`/`card--list`は**削除せず維持し、常時適用する修飾クラスとして残す**(当初「基本セレクタへ直接統合する」方針を検討したが、`.card`・`.group-grid`・`.seal`・`.card-title`・`.card-footer`の基本セレクタは`renderEditCard()`(編集フォームのカード、密度モードと無関係、常にカード状の見た目を保つ必要がある)とも共有されているため、基本セレクタ自体を書き換えると編集フォームの見た目が意図せずリスト行化してしまう。修飾クラスを残して常時付与する方が安全かつ差分も小さい)。`renderCard()`/`renderFavoriteCard()`が出力するマークアップで、`card--list`/`group-grid--list`は(状態分岐ではなく)常に付与するリテラルなクラス名として書く。
 - 既存ユーザーのlocalStorageに残る`DENSITY_MODE_KEY`の値は読み書きしないことで実質無害化する(明示的な削除処理は不要、YAGNI)。
 - 密度モード専用だった`.ind-btn`等のCSS/マークアップのうち、コンパクトモード専用だったメモの丸アイコン表現(`renderCardCompact()`内でのみ使われていたもの)は削除する。ログインID/パスワードの`.ind-btn.filled`/`.ind-btn.empty`(コピー可否を色・斜線で示す表現)はリスト表示でも使われているため維持する。
-- 以下のCSSブロックも削除対象(`.card--list`/`.group-grid--list`は基本セレクタへ統合する側、それ以外は死蔵化するため削除する)。filesync側は同構造の対応箇所を同様に処理する:
+- 以下のCSSブロックを削除する(`--compact`系のみ。`--list`系は前述の通り維持)。filesync側は同構造の対応箇所を同様に処理する:
   - `bookmarks.html:1008-1014`(filesync `1085-1091`): `.card--compact ...` — 削除。
   - `bookmarks.html:1016`(filesync `1093`): `.group-grid--compact` — 削除。
-  - `bookmarks.html:1059-1078`(filesync 同等箇所): `.card--list ...` — ルール内容を`.card`の基本セレクタへ統合し、`--list`修飾クラスは削除する。
-  - `bookmarks.html:1096`(filesync `1173`): `.group-grid--list` — ルール内容を`.group-grid`の基本セレクタへ統合し、`--list`修飾クラスは削除する。
-  - `bookmarks.html:1098-1118`: `.card-favorite .card-stub` と `.card-favorite--list ...` — いずれも`renderFavoriteCardComfy()`専用のCSSであり、R3での同関数削除に伴い両方とも死蔵化するため削除する(お気に入りのグリップは`.fav-grip`が別途処理するため、`.card-favorite .card-stub`は不要)。
+  - `bookmarks.html:1098`: `.card-favorite .card-stub` — `renderFavoriteCardComfy()`専用のCSSであり、R3での同関数削除に伴い死蔵化するため削除する(お気に入りのグリップは`.fav-grip`が別途処理するため不要)。
+- `bookmarks.html:1059-1078`(`.card--list`)・`:1096`(`.group-grid--list`)・`:1099-1118`(`.card-favorite--list`、filesync同構造)はいずれも削除せず維持し、常時適用する(前述の通り)。
 - `.card-stub`の基底CSS(`bookmarks.html:782-811`)は密度モードとは無関係に`renderEditCard()`(`bookmarks.html:2721`)が常時使用している既存クラスであり、削除対象外。R2のリスト行グリップはこのクラスを再利用する。
-- 実装後の残存確認用grepは`densityMode|DENSITY_MODE_KEY|card--compact|group-grid--compact|card--list|group-grid--list|card-favorite--list|renderCardComfy|renderCardCompact|renderFavoriteCardComfy`に拡張する(「リスク・懸念点」節のgrepパターンもこれに合わせて更新する)。
+- 実装後の残存確認用grepは`densityMode|DENSITY_MODE_KEY|card--compact|group-grid--compact|card-favorite \.card-stub|renderCardComfy|renderCardCompact|renderFavoriteCardComfy`に拡張する(`card--list`/`group-grid--list`/`card-favorite--list`は維持対象のため検出対象に含めない。「リスク・懸念点」節のgrepパターンもこれに合わせて更新する)。
 
 ### R2: リスト行へのドラッグ用グリップ追加
 
@@ -105,4 +104,5 @@ grillの結果、以下が確定済み:
 ## リスク・懸念点
 
 - R1はR3・R6の前提(リスト行のみが存在する状態)を作る変更のため、実装順序はR1 → (R2, R3, R6) → R4, R5, R7 という依存関係がある。R2/R3/R6はR1完了後でなければ対象のレンダリング関数が確定しない。
-- R1の削除範囲が広い(密度トグルUI・CSS・state・localStorageキー・3つのレンダー関数)ため、削除漏れが残存するリスクがある。実装後に`grep -n "densityMode\|DENSITY_MODE_KEY\|card--compact\|group-grid--compact\|card--list\|group-grid--list\|card-favorite--list\|renderCardComfy\|renderCardCompact\|renderFavoriteCardComfy"`で両ファイルに残存が無いことを確認する。
+- R1の削除範囲が広い(密度トグルUI・CSS・state・localStorageキー・3つのレンダー関数)ため、削除漏れが残存するリスクがある。実装後に`grep -n "densityMode\|DENSITY_MODE_KEY\|card--compact\|group-grid--compact\|renderCardComfy\|renderCardCompact\|renderFavoriteCardComfy"`で両ファイルに残存が無いことを確認する(`card--list`/`group-grid--list`/`card-favorite--list`は維持対象のため対象外)。
+- `.card`/`.group-grid`/`.seal`/`.card-title`/`.card-footer`の基本セレクタは`renderEditCard()`(編集フォームのカード)とも共有されているため、R1でこれらの基本セレクタ自体を書き換えないこと(`--list`修飾クラスの常時適用のみで対応すること)が実装時の制約になる。誤って基本セレクタを書き換えると編集フォームの見た目が意図せず変化する。
