@@ -1271,14 +1271,7 @@
     <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
     <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
-    <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
-    <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
   </dl>
-  <div class="bookmarklet-generator">
-    <h3>ブックマークレット</h3>
-    <p>下のリンクをブラウザのブックマークバーへドラッグして登録すると、閲覧中のページをワンクリックでこのアプリに登録できます。</p>
-    <a href="#" id="bookmarklet-link" class="btn btn-ghost">ここに登録 &rarr; bookmark-shelf</a>
-  </div>
 </section>
 
 <div class="layout" id="layout" hidden>
@@ -1492,18 +1485,6 @@
     document.getElementById('disconnect-btn').hidden = false;
     setHeaderButtonsEnabled(true);
     render();
-    applyPendingBookmarkletData();
-  }
-
-  function applyPendingBookmarkletData() {
-    if (!pendingBookmarkletData) return;
-    var data = pendingBookmarkletData;
-    pendingBookmarkletData = null;
-    newUrlInput.value = data.url;
-    newTitleInput.value = data.title;
-    addPanel.hidden = false;
-    newUrlInput.focus();
-    if (!data.title) newUrlInput.dispatchEvent(new Event('input'));
   }
 
   var DEFAULT_CONNECT_MESSAGE = 'ブックマークを保存するJSONファイルを開くか、新しく作成してください。以降の追加・編集はこのファイルに自動保存されます。';
@@ -1527,14 +1508,6 @@
   // クリック時にIndexedDBへ再度往復するとユーザー操作の有効期限が切れ、requestPermission()の
   // 許可プロンプトが出せなくなる恐れがあるため、boot()で取得済みのハンドルをそのまま使い回す)
   var pendingReconnectHandle = null;
-
-  // ブックマークレット経由の url/title パラメータは、接続確立前に読み取っておき、
-  // setConnected() 内で(接続経路によらず)まとめて適用する
-  var pendingBookmarkletData = (function () {
-    var params = new URLSearchParams(location.search);
-    var paramUrl = params.get('url');
-    return paramUrl ? { url: paramUrl, title: params.get('title') || '' } : null;
-  })();
 
   function boot() {
     if (!window.showOpenFilePicker) {
@@ -3073,16 +3046,6 @@
     toggleHelp();
   });
 
-  // ブックマークレット生成リンクのhrefを動的に設定
-  (function setupBookmarkletLink() {
-    var link = document.getElementById('bookmarklet-link');
-    if (!link) return;
-    var baseUrl = location.href.split('?')[0].split('#')[0];
-    var code = "javascript:location.href='" + baseUrl +
-      "?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title)";
-    link.setAttribute('href', code);
-  })();
-
   // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → タグ管理モーダル → 各種フォーム(編集・追加) → 選択モード。
   // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。閉じる層が何も無ければ、最後にフォーカスを外す。
   function closeTopmostLayer() {
@@ -3186,7 +3149,7 @@
   }
 
   // フォーカス中のカードに対するショートカット。
-  function handleCardShortcut(e, card, cardId) {
+  function handleCardShortcut(e, card) {
     switch (e.key) {
       case 'ArrowRight':
         e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
@@ -3209,19 +3172,6 @@
         // クリック時と完全に同じ経路(target=_blank rel=noopener)で開くため、既存のリンクを踏む
         var link = card.querySelector('.card-title a');
         if (link) link.click();
-        return;
-      case 'e':
-        e.preventDefault();
-        state.editingId = cardId;
-        render();
-        // render()内のフォーカス復元より後に呼ぶことで、編集フォームの先頭inputへフォーカスを渡す
-        var urlInput = document.getElementById('edit-url');
-        if (urlInput) urlInput.focus();
-        return;
-      case 'Delete':
-      case 'Backspace':
-        e.preventDefault(); // 一部環境でBackspaceが「戻る」に割り当たるのを防ぐ
-        deleteCardWithFocusHandoff(card);
         return;
     }
   }
@@ -3247,9 +3197,8 @@
 
     var card = e.target.closest('#group-sections .card[tabindex]');
     if (!card) return;
-    var cardId = card.getAttribute('data-card-id');
 
-    handleCardShortcut(e, card, cardId);
+    handleCardShortcut(e, card);
   });
 
   // キーボード操作でフォーカス中のカードID。render()がDOMを作り直すため、stateではなくここで一時保持する。
@@ -3299,24 +3248,6 @@
     var targetIdx = (idx + direction + sections.length) % sections.length;
     var targetCard = sections[targetIdx].querySelector('.card[tabindex]');
     if (targetCard) targetCard.focus();
-  }
-
-  // 削除後のフォーカス移動先は「次のカード」、無ければ「前のカード」、一覧が空になる場合はどこにもフォーカスしない。
-  // handleDelete()がrender()を内部で呼ぶため、移動先IDは削除の前に確定させておく必要がある。
-  function deleteCardWithFocusHandoff(card) {
-    var cards = getNavigableCards();
-    var pos = cards.indexOf(card);
-    var neighbor = cards[pos + 1] || cards[pos - 1] || null;
-    var previousFocusedCardId = focusedCardId;
-
-    focusedCardId = neighbor ? neighbor.getAttribute('data-card-id') : null;
-    if (!handleDelete(card.getAttribute('data-card-id'))) {
-      focusedCardId = previousFocusedCardId; // 確認ダイアログでキャンセルされたら元に戻す
-      return;
-    }
-    // confirm()の表示でフォーカスが外れるブラウザ挙動に左右されないよう、削除確定後に明示的に移す
-    var restored = document.querySelector('#group-sections .card[tabindex="0"]');
-    if (restored) restored.focus();
   }
 
   // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える。
