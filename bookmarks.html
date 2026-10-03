@@ -1095,6 +1095,38 @@
 
   .group-grid--list { display: flex; flex-direction: column; gap: 0; }
 
+  .card-favorite .card-stub { width: 14px; }
+  .card-favorite--list {
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 0;
+    border-bottom: 1px solid var(--sage);
+    box-shadow: none;
+    background: transparent;
+  }
+  .card-favorite--list .seal { width: 16px; height: 16px; }
+  .card-favorite--list .seal img, .card-favorite--list .seal svg { width: 10px; height: 10px; }
+  .card-favorite--list .card-title {
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .card-favorite--list .card-footer { margin-top: 0; flex: 0 0 auto; }
+  .fav-grip { color: var(--amber); font-size: 0.8rem; cursor: grab; flex: 0 0 auto; }
+  .row-group-chip {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    background: var(--ivory);
+    border-radius: 3px;
+    padding: 1px 6px;
+    flex: 0 0 auto;
+  }
+
   /* ---------- 編集フォーム(カード内) ---------- */
 
   .edit-form { display: grid; gap: 8px; width: 100%; }
@@ -1569,6 +1601,13 @@
     return max + 1;
   }
 
+  // favoriteOrder比較の単一ソース。null(マイグレーション未実施等の異常系)は末尾に送る。
+  function compareFavoriteOrder(a, b) {
+    var ao = a.favoriteOrder != null ? a.favoriteOrder : Infinity;
+    var bo = b.favoriteOrder != null ? b.favoriteOrder : Infinity;
+    return ao - bo;
+  }
+
   function getGroups() {
     var order = Object.create(null);
     bookmarks.forEach(function (b) {
@@ -1889,10 +1928,11 @@
     '</div>';
   }
 
-  function renderFavoriteCard(b) {
+  function renderFavoriteCardComfy(b) {
     var iconHtml = resolveIconHtml(b);
     return (
       '<article class="card card-favorite" data-fav-id="' + escapeHtml(b.id) + '">' +
+        '<div class="card-stub"><span class="stub-grip" aria-hidden="true">&#8942;</span></div>' +
         '<div class="card-body">' +
           '<div class="card-top">' +
             '<div class="seal">' + iconHtml + '</div>' +
@@ -1910,6 +1950,26 @@
     );
   }
 
+  function renderFavoriteCardList(b) {
+    var iconHtml = resolveIconHtml(b);
+    return (
+      '<article class="card card-favorite card-favorite--list" data-fav-id="' + escapeHtml(b.id) + '">' +
+        '<span class="fav-grip" aria-hidden="true">&#8942;&#8942;</span>' +
+        '<div class="seal">' + iconHtml + '</div>' +
+        '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(b.title) + '</a></h3>' +
+        '<span class="row-group-chip">' + escapeHtml(b.group || '未分類') + '</span>' +
+        '<div class="card-footer"><div class="card-actions">' +
+          '<button type="button" class="icon-btn" data-action="unpin" aria-label="ピン解除">&#9733;</button>' +
+        '</div></div>' +
+      '</article>'
+    );
+  }
+
+  function renderFavoriteCard(b) {
+    if (state.densityMode === 'list') return renderFavoriteCardList(b);
+    return renderFavoriteCardComfy(b);
+  }
+
   // お気に入りは検索/タグ/グループの絞り込みルールを通常セクションと共有する(getSearchTagFilteredを再利用)。
   // #group-sections とは独立したDOMツリーのため、data-card-idベースのイベント割り当てループ・
   // bindGroupSectionDragEvents()・getNavigableCards()のいずれからも対象外になる(意図的な設計)。
@@ -1922,7 +1982,8 @@
       container.innerHTML = '';
       return;
     }
-    var items = sortItems(pinned);
+    // お気に入りは state.sortMode(手動順/よく使う順)の影響を受けず、常に favoriteOrder で固定表示する。
+    var items = pinned.slice().sort(compareFavoriteOrder);
     container.innerHTML =
       '<section class="favorites-section">' +
         '<div class="group-section-header"><h2 class="group-section-title">お気に入り</h2><span class="group-section-count">' + items.length + ' 件</span></div>' +
@@ -1953,6 +2014,8 @@
         render();
       });
     });
+
+    bindFavoriteDragEvents(container);
   }
 
   function renderSections() {
@@ -2371,6 +2434,42 @@
   /* ---------- ドラッグ&ドロップ(並べ替え・グループ間移動) ---------- */
 
   var draggedCardId = null;
+
+  var draggedFavId = null; // お気に入りセクション専用のドラッグ追跡変数(通常カードのdraggedCardIdとは独立)
+
+  // お気に入りセクション内の並び替え専用。favoriteOrderのみ更新し、元のグループ内のorder・groupには一切影響しない。
+  // 並び順の基準はcompareFavoriteOrder()を再利用する(表示ソートと並び替え計算を食い違わせないため)。
+  function moveFavorite(draggedId, targetId, after) {
+    if (!draggedId || draggedId === targetId) return;
+    var dragged = bookmarks.find(function (x) { return x.id === draggedId; });
+    var target = bookmarks.find(function (x) { return x.id === targetId; });
+    if (!dragged || !target || !dragged.pinned || !target.pinned) return;
+
+    var pinned = bookmarks.filter(function (x) { return x.pinned; }).sort(compareFavoriteOrder);
+    pinned.splice(pinned.indexOf(dragged), 1);
+    var toIdx = pinned.indexOf(target);
+    if (after) toIdx += 1;
+    pinned.splice(toIdx, 0, dragged);
+    pinned.forEach(function (x, i) { x.favoriteOrder = i; });
+    saveData(bookmarks);
+    render();
+  }
+
+  // お気に入り専用のドラッグバインド。bindDragEvents/bindGroupSectionDragEventsとは独立した実装とし、
+  // data-card-idベースの既存イベント割り当てループ・getNavigableCards()からは引き続き除外されたままにする。
+  function bindFavoriteDragEvents(container) {
+    container.querySelectorAll('[data-fav-id]').forEach(function (el) {
+      var id = el.getAttribute('data-fav-id');
+      el.setAttribute('draggable', 'true');
+      bindDragReorder(el, id, {
+        getDragged: function () { return draggedFavId; },
+        setDragged: function (v) { draggedFavId = v; },
+        stopPropagation: true,
+        dropEffect: 'move',
+        onDrop: function (draggedId, targetId, after) { moveFavorite(draggedId, targetId, after); }
+      });
+    });
+  }
 
   function bindDragEvents(card, b) {
     card.setAttribute('draggable', 'true');
