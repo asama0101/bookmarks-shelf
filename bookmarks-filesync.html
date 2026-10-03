@@ -2165,6 +2165,17 @@
 
   function renderFavoriteCard(b) {
     var iconHtml = resolveIconHtml(b);
+    var idFilled = !!b.loginId;
+    var pwFilled = !!b.loginPassword;
+
+    var indicatorsHtml =
+      (idFilled
+        ? '<button type="button" class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
+      (pwFilled
+        ? '<button type="button" class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
+        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>');
+
     return (
       '<article class="card card-favorite card-favorite--list" data-fav-id="' + escapeHtml(b.id) + '">' +
         '<span class="fav-grip" aria-hidden="true">&#8942;&#8942;</span>' +
@@ -2173,6 +2184,8 @@
         '<span class="row-group-chip">' + escapeHtml(b.group || '未分類') + '</span>' +
         '<div class="card-footer"><div class="card-actions">' +
           '<button type="button" class="icon-btn" data-action="unpin" aria-label="ピン解除">&#9733;</button>' +
+          indicatorsHtml +
+          '<button type="button" class="icon-btn" data-action="edit" aria-label="編集">&#9998;</button>' +
         '</div></div>' +
       '</article>'
     );
@@ -2210,6 +2223,15 @@
         saveData(bookmarks);
         render();
       });
+
+      var copyIdBtn = el.querySelector('[data-action="copy-login-id"]');
+      if (copyIdBtn) copyIdBtn.addEventListener('click', function () { copyToClipboard(b.loginId, copyIdBtn); });
+
+      var copyPwBtn = el.querySelector('[data-action="copy-login-password"]');
+      if (copyPwBtn) copyPwBtn.addEventListener('click', function () { copyToClipboard(b.loginPassword, copyPwBtn); });
+
+      var editBtn = el.querySelector('[data-action="edit"]');
+      if (editBtn) editBtn.addEventListener('click', function () { state.editingId = b.id; render(); });
     });
 
     bindFavoriteDragEvents(container);
