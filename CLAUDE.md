@@ -49,9 +49,7 @@ Each file's script is a single IIFE with these layers, in order:
      It's gated on `pinned === true` specifically, not just `typeof favoriteOrder !== 'number'`.
      The latter alone would also match every already-unpinned bookmark (whose `favoriteOrder` is permanently `null` by design) and retrigger the migration on every single load.
 
-     The manual-vs-frequency display toggle (`state.sortMode`) persists to its own `localStorage` key (`SORT_MODE_KEY`, separate from the bookmark data key) via `loadSortMode()`, which also coerces any unrecognized stored value back to `'manual'`.
-     `bookmarks.html` therefore has two independent `localStorage` keys (data, sort mode), each coerced back to a safe default on an unrecognized stored value.
-     A former third key, `DENSITY_MODE_KEY`, backed a now-removed multi-density display toggle (see the Render layer below) — its reads/writes were deleted along with the feature, so any leftover value in a user's existing `localStorage` is simply never looked at again.
+     `bookmarks.html`'s only `localStorage` key is the bookmark data itself (`STORAGE_KEY`). Two former additional keys have since been removed along with the features they backed: `SORT_MODE_KEY` persisted a manual-vs-frequency display toggle (via a `loadSortMode()` that coerced any unrecognized stored value back to `'manual'`), and `DENSITY_MODE_KEY` backed a multi-density display toggle (see the Render layer below) — any leftover value for either key in a user's existing `localStorage` is simply never looked at again.
    - `bookmarks-filesync.html`: adds an IndexedDB-backed store (`idbGetHandle`/`idbSetHandle`/
      `idbClearHandle`) that remembers the last-used `FileSystemFileHandle` so the app can offer to
      reconnect on next load without re-prompting the file picker. `boot()` drives the
@@ -135,17 +133,9 @@ Each file's script is a single IIFE with these layers, in order:
    condition — it would keep the section visible under a group filter whenever that group happens to
    have a pin.
 
-   `bookmarks.html` (not `bookmarks-filesync.html`) additionally supports sorting by usage frequency:
-   a header toggle (`#toggle-sort-mode-btn`) flips `state.sortMode` between `'manual'` and
-   `'frequency'`. `sortItems()` branches on it — manual mode sorts by `order` as before; frequency
-   mode sorts by `frequencyScore(b)`, `accessCount / (daysSinceLastAccess + 1)`, computed from
-   `b.accessCount`/`b.lastAccessed`. A bookmark with `accessCount === 0` scores `0` unconditionally
-   (skipping the days-since-access term entirely) so a never-opened bookmark sorts last without
-   needing a placeholder "very large elapsed days" value for its `null` `lastAccessed`. Opening a
-   bookmark via its title link increments `accessCount` and stamps `lastAccessed = Date.now()` (both
-   in the normal grid and in the favorites section); `bookmarks-filesync.html` carries the same three
-   fields through `sanitizeBookmark()`/new-bookmark defaults for cross-file JSON portability, but has
-   no UI to write to them and never increments them.
+   A bookmark's usage is tracked via `frequencyScore(b)`, `accessCount / (daysSinceLastAccess + 1)`, computed from `b.accessCount`/`b.lastAccessed`. A bookmark with `accessCount === 0` scores `0` unconditionally (skipping the days-since-access term entirely) so a never-opened bookmark ranks last without needing a placeholder "very large elapsed days" value for its `null` `lastAccessed`. Opening a bookmark via its title link increments `accessCount` and stamps `lastAccessed = Date.now()` (in the normal grid, the favorites section, and the frequent section described below); `bookmarks-filesync.html` carries the same three fields through `sanitizeBookmark()`/new-bookmark defaults for cross-file JSON portability, but has no UI to write to them and never increments them.
+
+   A bookmark with `accessCount > 0` can additionally render in a standalone **frequent section** (`#frequent-section`, populated by `renderFrequentSection()`, called from `render()` right before `renderFavoritesSection()` — so it appears immediately above the favorites section) — `bookmarks.html` only, since `bookmarks-filesync.html` never increments `accessCount`. It filters `getSearchTagFiltered()` down to bookmarks with `accessCount > 0`, sorts them by `frequencyScore()` descending, and keeps only the top 5; it is hidden entirely when that set is empty or when `state.group !== null` — the same hide rule the favorites section uses. It reuses the favorites section's `.card-favorite--grid` tile markup via its own `renderFrequentCard()`, but keys elements by `data-freq-id` rather than `data-fav-id` and binds clicks through its own `container.querySelectorAll('[data-freq-id]')` loop, giving it a DOM tree and event wiring fully independent of the favorites section's `data-fav-id` loop. Its cards have no drag grip: unlike favorites (manually ordered via `favoriteOrder`), the frequent section's order is always recomputed from `frequencyScore()` on every render, so there is nothing for a manual drag to reorder. Each card supports the same toggle-pin (☆/★), login ID/password copy, and edit actions as a favorites-section card, but has no unpin-only or remove action of its own — membership in the list is derived entirely from `accessCount`/`frequencyScore()`, not a field the user sets on the card itself.
 
    Both files render every card in a single, fixed list-row layout.
    A three-way display density toggle (`'comfy'`/`'compact'`/`'list'`, `state.densityMode`, its own `localStorage` key `DENSITY_MODE_KEY`, the `#density-toggle` header control, and the `renderCardComfy`/`renderCardCompact`/`renderFavoriteCardComfy` render functions) existed earlier but was removed entirely once user testing showed the list layout alone was sufficient — `renderCard()` and `renderFavoriteCard()` are now plain functions, not dispatchers; there is exactly one rendering path per card type.
@@ -166,12 +156,7 @@ Each file's script is a single IIFE with these layers, in order:
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
-   also propagate the target group's `groupOrder` onto the moved bookmark. In `bookmarks.html`, both
-   paths are disabled outright while `state.sortMode === 'frequency'` (`bindGroupSectionDragEvents()`
-   isn't called, and `bindDragEvents()` is skipped per-card) — the visual order in that mode reflects
-   `frequencyScore`, not `order`, so a drag would splice the underlying array at the wrong position
-   and silently corrupt the manual order it's supposed to be preserving for when the user switches
-   back.
+   also propagate the target group's `groupOrder` onto the moved bookmark.
 
    The favorites section supports its own drag-to-reorder, independent of the group-section drag-and-drop above.
    `bindFavoriteDragEvents()` wires `[data-fav-id]` elements (not `[data-card-id]`) through the same `bindDragReorder()` helper `bindDragEvents()` uses.
@@ -237,15 +222,10 @@ pinned, lastAccessed, accessCount, favoriteOrder }`.
   favorites section, independent of its `group`/`order` — pinning doesn't move or remove it from its
   group.
 - `favoriteOrder` (`number` or `null`) is a manual sort index for the favorites section itself. It's set only while `pinned === true`, and reset back to `null` the moment a bookmark is unpinned. Like `groupOrder`, it can't be safely recomputed from array position, so it's backfilled once via `assignFavoriteOrder()` (the one-time-migration-shim pattern `order`/`groupOrder` also use) for pinned bookmarks saved before favorites reordering existed. `compareFavoriteOrder()` is the single comparator for `favoriteOrder`, used both to sort the favorites section for display and to compute `moveFavorite()`'s reorder. It treats a `null` `favoriteOrder` as sorting last rather than erroring, for data caught mid-migration.
-- `lastAccessed` (`number` timestamp or `null`) / `accessCount` (`number`, default `0`) track when
-  and how often a bookmark's link has been opened; both start `null`/`0` and are only ever written by
-  `bookmarks.html`'s frequency-sort feature (see Architecture above) — `bookmarks-filesync.html`
-  carries the fields but never updates them itself.
+- `lastAccessed` (`number` timestamp or `null`) / `accessCount` (`number`, default `0`) track when and how often a bookmark's link has been opened; both start `null`/`0` and are only ever written by `bookmarks.html`'s usage tracking (`frequencyScore()`, used to rank the frequent section — see Architecture above) — `bookmarks-filesync.html` carries the fields but never updates them itself.
 - `group` is a plain string or `null` (ungrouped); groups are not a separate entity, just a value
   bookmarks share.
-- `order` is a manual sort index; cards within a group are displayed in `order` sequence except in
-  `bookmarks.html`'s frequency-sort display mode (see Architecture above), where it's ignored in
-  favor of `frequencyScore()`.
+- `order` is a manual sort index; cards within a group are displayed in `order` sequence.
 - `groupOrder` is a manual sort index for the group *section itself* (which group's section appears
   before which), denormalized the same way `group` is: every bookmark sharing a `group` value is
   expected to carry the same `groupOrder`. Every code path that sets `b.group` must also set
