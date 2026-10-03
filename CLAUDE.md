@@ -43,10 +43,15 @@ Each file's script is a single IIFE with these layers, in order:
      bookmarks missing a manual-sort `order` field are migrated in place (assigned by array index)
      — this is a one-time compatibility shim for data saved before drag-to-reorder existed. The same
      migration pattern backfills `pinned`/`lastAccessed`/`accessCount` (added `false`/`null`/`0`) for
-     data saved before favorites/frequency-sort existed, gated on `pinned` being non-boolean. The
-     manual-vs-frequency display toggle (`state.sortMode`) persists to its own `localStorage` key
-     (`SORT_MODE_KEY`, separate from the bookmark data key) via `loadSortMode()`, which also coerces
-     any unrecognized stored value back to `'manual'`.
+     data saved before favorites/frequency-sort existed, gated on `pinned` being non-boolean.
+
+     A further migration backfills `favoriteOrder` via `assignFavoriteOrder()` for pinned bookmarks saved before favorites reordering existed — the same function both files' JSON-import path (and bookmarks-filesync.html's initial file read) also calls.
+     It's gated on `pinned === true` specifically, not just `typeof favoriteOrder !== 'number'`.
+     The latter alone would also match every already-unpinned bookmark (whose `favoriteOrder` is permanently `null` by design) and retrigger the migration on every single load.
+
+     The manual-vs-frequency display toggle (`state.sortMode`) persists to its own `localStorage` key (`SORT_MODE_KEY`, separate from the bookmark data key) via `loadSortMode()`, which also coerces any unrecognized stored value back to `'manual'`.
+     A third, unrelated `localStorage` key (`DENSITY_MODE_KEY`) persists `state.densityMode` the same way (see the density-mode paragraph in the Render layer below).
+     `bookmarks.html` therefore has three independent `localStorage` keys (data, sort mode, density mode), each coerced back to a safe default on an unrecognized stored value.
    - `bookmarks-filesync.html`: adds an IndexedDB-backed store (`idbGetHandle`/`idbSetHandle`/
      `idbClearHandle`) that remembers the last-used `FileSystemFileHandle` so the app can offer to
      reconnect on next load without re-prompting the file picker. `boot()` drives the
@@ -151,6 +156,25 @@ Each file's script is a single IIFE with these layers, in order:
    fields through `sanitizeBookmark()`/new-bookmark defaults for cross-file JSON portability, but has
    no UI to write to them and never increments them.
 
+   Both files additionally support three display density modes — `'comfy'`, `'compact'`, `'list'` — held in `state.densityMode`.
+   The mode persists to its own `localStorage` key (`DENSITY_MODE_KEY`, separate from both the bookmark data key and `SORT_MODE_KEY`), defaulting to `'compact'` whenever the stored value is missing or unrecognized.
+   A header button group (`#density-toggle`) writes the choice to both `state.densityMode` and `DENSITY_MODE_KEY` and re-renders.
+   `renderCard()` and `renderFavoriteCard()` are both dispatchers that branch on `state.densityMode`.
+   `renderCard()` picks one of `renderCardComfy`/`renderCardCompact`/`renderCardList`.
+   `renderFavoriteCard()` picks one of only two — `renderFavoriteCardComfy`/`renderFavoriteCardList` — since compact favorites reuse the comfy favorite-card markup (there's no separate compact favorite card).
+   Every existing call site of `renderCard()`/`renderFavoriteCard()` is unchanged by this, so the density branch is invisible outside these two dispatcher functions.
+   Compact and list modes both drop the tag row entirely.
+   In both compact and list modes, login-ID and login-password render as fixed indicator icons (`#ic-key`/`#ic-lock` `<svg>` symbols) whose look depends on whether the field is filled.
+   A filled login-ID/login-password renders as a colored `.ind-btn.filled` `<button data-action="copy-login-id">` / `data-action="copy-login-password">` that copies its value on click.
+   An empty one renders as a dimmed, slashed `.ind-btn.empty` `<span>` that isn't clickable.
+   Memo is handled differently per mode, so don't assume it shares the login-ID/password indicator in both.
+   In compact mode (`renderCardCompact()`), memo gets the same filled/empty indicator icon (`#ic-memo`).
+   That memo icon is always a non-interactive `<span>`, even when filled, since memo has no copy action.
+   In list mode (`renderCardList()`), memo has no indicator icon at all.
+   Instead, a non-empty memo renders its text inline next to the title as a truncated `.row-memo-preview` `<span>` (plain text with a small `#ic-memo` glyph prefix, not clickable).
+   An empty memo renders nothing in list mode.
+   Pin/edit/delete are icon-only buttons in both compact and list modes, instead of the labeled buttons comfy mode uses.
+
    Both files build a bookmarklet link (`#bookmarklet-link`, inside the help panel) the same way:
    an IIFE (`setupBookmarkletLink()`) strips any `?query` / `#fragment` off `location.href` to get a
    stable base URL, then sets the link's `href` to a `javascript:` URI that navigates the current tab
@@ -168,8 +192,20 @@ Each file's script is a single IIFE with these layers, in order:
    isn't called, and `bindDragEvents()` is skipped per-card) — the visual order in that mode reflects
    `frequencyScore`, not `order`, so a drag would splice the underlying array at the wrong position
    and silently corrupt the manual order it's supposed to be preserving for when the user switches
-   back. Group section headers
-   themselves show only a title and count — reordering and renaming groups is not done on the section
+   back.
+
+   The favorites section supports its own drag-to-reorder, independent of the group-section drag-and-drop above and available in every density mode.
+   `bindFavoriteDragEvents()` wires `[data-fav-id]` elements (not `[data-card-id]`) through the same `bindDragReorder()` helper `bindDragEvents()` uses.
+   It tracks its own drag state in a module-scoped `draggedFavId` rather than sharing `draggedCardId`, since a favorites-section drag and a group-grid drag are otherwise unrelated gestures that shouldn't share mutable state.
+   Dropping within the favorites section calls `moveFavorite()`, which only renumbers the pinned bookmarks' `favoriteOrder`.
+   `moveFavorite()` uses the same `compareFavoriteOrder()` comparator as the display sort, so sort order and reorder math can't disagree.
+   It never writes to `order`/`group`, so reordering favorites can't move a bookmark out of its group or disturb its position within that group's own section.
+
+   Because dragging a favorite card never sets `draggedCardId`, `bindGroupSectionDragEvents()`'s `dragover`/`drop` handlers both start with `if (!draggedCardId) return;`.
+   Without this guard, dragging a favorite card over a group section would fall through to `moveToGroupEnd()` and silently reassign that bookmark's real `group`/`order`, corrupting data instead of being a no-op.
+   This guard was added in a post-implementation whole-branch review once the favorites-drag feature made that cross-drag spillover possible.
+
+   Group section headers themselves show only a title and count — reordering and renaming groups is not done on the section
    header, it's done in the **グループ管理 (group management) modal** (`#group-manage-overlay`,
    opened via the "管理" button, which lives inside the サイドバー's グループ tab panel and is
    only reachable while that tab is active), which lists every group name
@@ -209,7 +245,7 @@ Each file's script is a single IIFE with these layers, in order:
 
 Each bookmark:
 `{ id, url, title, tags[], group, groupOrder, loginId, loginPassword, memo, scheme, domain, order,
-pinned, lastAccessed, accessCount }`.
+pinned, lastAccessed, accessCount, favoriteOrder }`.
 
 - `loginPassword` is stored and displayed **in plaintext** by design (there's a visible warning in
   the UI, `※ パスワードは平文で保存されます`) — this is a deliberate trade-off for a local personal
@@ -221,6 +257,7 @@ pinned, lastAccessed, accessCount }`.
 - `pinned` (boolean, default `false`) controls whether a bookmark also appears in the standalone
   favorites section, independent of its `group`/`order` — pinning doesn't move or remove it from its
   group.
+- `favoriteOrder` (`number` or `null`) is a manual sort index for the favorites section itself. It's set only while `pinned === true`, and reset back to `null` the moment a bookmark is unpinned. Like `groupOrder`, it can't be safely recomputed from array position, so it's backfilled once via `assignFavoriteOrder()` (the one-time-migration-shim pattern `order`/`groupOrder` also use) for pinned bookmarks saved before favorites reordering existed. `compareFavoriteOrder()` is the single comparator for `favoriteOrder`, used both to sort the favorites section for display and to compute `moveFavorite()`'s reorder. It treats a `null` `favoriteOrder` as sorting last rather than erroring, for data caught mid-migration.
 - `lastAccessed` (`number` timestamp or `null`) / `accessCount` (`number`, default `0`) track when
   and how often a bookmark's link has been opened; both start `null`/`0` and are only ever written by
   `bookmarks.html`'s frequency-sort feature (see Architecture above) — `bookmarks-filesync.html`
