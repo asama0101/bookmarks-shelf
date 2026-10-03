@@ -59,12 +59,7 @@ Each file's script is a single IIFE with these layers, in order:
      (`requestPermission`) require a live user gesture, the pending handle is kept in
      `pendingReconnectHandle` rather than re-fetched from IndexedDB inside the reconnect button's
      click handler. Writes go through a `saveChain` promise chain so overlapping saves (e.g. rapid
-     drag-and-drop) serialize onto the same file instead of racing `createWritable()` calls. A
-     bookmarklet-provided prefill (`?url=&title=` query params, read into `pendingBookmarkletData` at
-     script load, before any file is connected) can't be shown immediately, since the add form isn't
-     reachable until a file connection exists — `applyPendingBookmarkletData()` is instead called from
-     inside `setConnected()`, so it fires once regardless of whether the connection came from opening
-     a file, creating one, or reconnecting to the remembered handle.
+     drag-and-drop) serialize onto the same file instead of racing `createWritable()` calls.
 2. **URL/domain helpers** — `classifyUrl()` allowlists `http://`, `https://`, `file:///`, and UNC
    paths (a leading `\\`, tested before the `file:///` check) as `'unc'`; `deriveDomain()`/
    `deriveTentativeTitle()` derive a favicon domain or a fallback title (file paths are parsed by
@@ -163,15 +158,11 @@ Each file's script is a single IIFE with these layers, in order:
    Memo has no indicator icon — a non-empty memo instead renders its text inline next to the title as a truncated `.row-memo-preview` `<span>` (plain text with a small `#ic-memo` glyph prefix, not clickable); an empty memo renders nothing.
    Pin/edit/delete remain icon-only buttons.
 
-   Both files build a bookmarklet link (`#bookmarklet-link`, inside the help panel) the same way:
-   an IIFE (`setupBookmarkletLink()`) strips any `?query` / `#fragment` off `location.href` to get a
-   stable base URL, then sets the link's `href` to a `javascript:` URI that navigates the current tab
-   to `<baseUrl>?url=<encodeURIComponent(location.href)>&title=<encodeURIComponent(document.title)>`
-   — i.e. clicking the bookmarklet on any page reopens the app with that page's URL/title as query
-   params. `bookmarks.html` reads those params and prefills the add form in a trailing IIFE that runs
-   once, right after the initial `render()` call; `bookmarks-filesync.html`'s equivalent prefill is
-   deferred through `pendingBookmarkletData` as described above, since it has to wait for a file
-   connection first.
+   A bookmarklet-based quick-add feature (a `javascript:` link that reopened the app with the current
+   page's URL/title as query params) was removed: Chromium-based browsers refuse to navigate a
+   non-`file://` page to a `file://` URL that carries a query string, so `location.search` arrived
+   empty and the add form never got prefilled — the feature never actually worked end to end once
+   tested against a real external site.
 5. **Drag-and-drop** — cards are draggable for both manual reordering within/across group sections
    (`moveBookmark`) and for dropping into a group section's empty area to append at that group's end
    (`moveToGroupEnd`). Both paths renumber every bookmark's `order` field afterward and persist, and
