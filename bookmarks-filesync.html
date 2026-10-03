@@ -1893,7 +1893,7 @@
       if (state.tag && (b.tags || []).indexOf(state.tag) === -1) return false;
       if (state.group !== null && (b.group || '') !== state.group) return false;
       if (q) {
-        var hay = (b.title + ' ' + b.url + ' ' + (b.tags || []).join(' ')).toLowerCase();
+        var hay = (b.title + ' ' + b.url + ' ' + (b.tags || []).join(' ') + ' ' + (b.memo || '')).toLowerCase();
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
@@ -2031,6 +2031,7 @@
         var val = btn.getAttribute('data-value');
         state.tag = (state.tag === val) ? null : val;
         render();
+        window.scrollTo({ top: 0, behavior: 'auto' });
       });
     });
   }
@@ -2057,6 +2058,7 @@
         var val = btn.getAttribute('data-value');
         state.group = (state.group === val) ? null : val;
         render();
+        window.scrollTo({ top: 0, behavior: 'auto' });
       });
     });
   }
@@ -2385,6 +2387,7 @@
     state.tag = null;
     state.group = null;
     render();
+    window.scrollTo({ top: 0, behavior: 'auto' });
   });
 
   /* ---------- グループ管理モーダル ---------- */
