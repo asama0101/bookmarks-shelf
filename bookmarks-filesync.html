@@ -158,27 +158,6 @@
     border-color: var(--amber);
   }
 
-  .density-toggle {
-    display: inline-flex;
-    border: 1px solid rgba(245, 241, 230, 0.4);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .density-btn {
-    all: unset;
-    cursor: pointer;
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    font-family: var(--font-body);
-    font-size: 0.85rem;
-    color: var(--ivory);
-    border-right: 1px solid rgba(245, 241, 230, 0.4);
-  }
-  .density-btn:last-child { border-right: none; }
-  .density-btn:hover { background: rgba(245, 241, 230, 0.12); }
-  .density-btn.active { background: var(--amber); color: var(--amber-ink); }
-
   .btn-ghost:disabled, .btn-amber:disabled {
     opacity: 0.35;
     cursor: not-allowed;
@@ -1082,16 +1061,6 @@
     gap: 6px;
   }
 
-  .card--compact .card-stub { width: 14px; }
-  .card--compact .card-body { padding: 8px 9px; }
-  .card--compact .seal { width: 18px; height: 18px; }
-  .card--compact .seal img, .card--compact .seal svg { width: 11px; height: 11px; }
-  .card--compact .card-title { font-size: 0.78rem; }
-  .card--compact .card-footer { margin-top: 6px; gap: 2px; }
-  .card--compact .card-actions { gap: 2px; }
-
-  .group-grid--compact { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
-
   .icon-btn {
     all: unset;
     box-sizing: border-box;
@@ -1172,7 +1141,6 @@
 
   .group-grid--list { display: flex; flex-direction: column; gap: 0; }
 
-  .card-favorite .card-stub { width: 14px; }
   .card-favorite--list {
     align-items: center;
     gap: 8px;
@@ -1244,11 +1212,6 @@
     <button class="btn btn-ghost" id="toggle-select-btn" type="button" disabled>選択</button>
     <button class="btn btn-ghost" id="export-btn" type="button" disabled>エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button" disabled>インポート</button>
-    <div class="density-toggle" id="density-toggle" role="group" aria-label="表示密度">
-      <button type="button" class="density-btn" data-density="comfy">ゆったり</button>
-      <button type="button" class="density-btn" data-density="compact">コンパクト</button>
-      <button type="button" class="density-btn" data-density="list">リスト</button>
-    </div>
     <input type="file" id="import-file" accept="application/json,.json" hidden>
   </div>
   <div class="filter-indicator" id="filter-indicator"></div>
@@ -1432,14 +1395,6 @@
   'use strict';
 
   var UNGROUPED = null; // 未分類(グループ未割り当て)を表す内部値
-  var DENSITY_MODE_KEY = 'bookmarks_density_mode';
-
-  function loadDensityMode() {
-    try {
-      var v = localStorage.getItem(DENSITY_MODE_KEY);
-      return (v === 'comfy' || v === 'compact' || v === 'list') ? v : 'compact';
-    } catch (e) { return 'compact'; }
-  }
 
   var state = {
     search: '',
@@ -1450,8 +1405,7 @@
     editingTag: null,
     selectMode: false,
     selectedIds: new Set(),
-    sidebarTab: 'group',
-    densityMode: loadDensityMode()
+    sidebarTab: 'group'
   };
 
   var bookmarks = [];
@@ -1985,10 +1939,6 @@
     selectBtn.textContent = state.selectMode ? '選択終了' : '選択';
     selectBtn.classList.toggle('active', state.selectMode);
 
-    document.querySelectorAll('#density-toggle [data-density]').forEach(function (btn) {
-      btn.classList.toggle('active', btn.getAttribute('data-density') === state.densityMode);
-    });
-
     syncHeaderHeight();
   }
 
@@ -2157,14 +2107,6 @@
     render();
   });
 
-  document.getElementById('density-toggle').addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-density]');
-    if (!btn) return;
-    state.densityMode = btn.getAttribute('data-density');
-    try { localStorage.setItem(DENSITY_MODE_KEY, state.densityMode); } catch (err) {}
-    render();
-  });
-
   document.getElementById('selection-clear-btn').addEventListener('click', function () {
     state.selectedIds.clear();
     render();
@@ -2220,29 +2162,7 @@
     '</div>';
   }
 
-  function renderFavoriteCardComfy(b) {
-    var iconHtml = resolveIconHtml(b);
-    return (
-      '<article class="card card-favorite" data-fav-id="' + escapeHtml(b.id) + '">' +
-        '<div class="card-stub"><span class="stub-grip" aria-hidden="true">&#8942;</span></div>' +
-        '<div class="card-body">' +
-          '<div class="card-top">' +
-            '<div class="seal">' + iconHtml + '</div>' +
-            '<div class="card-title-wrap">' +
-              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(b.title) + '</a></h3>' +
-            '</div>' +
-          '</div>' +
-          '<div class="card-footer">' +
-            '<div class="card-actions">' +
-              '<button type="button" class="btn-quiet" data-action="unpin">ピン解除</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</article>'
-    );
-  }
-
-  function renderFavoriteCardList(b) {
+  function renderFavoriteCard(b) {
     var iconHtml = resolveIconHtml(b);
     return (
       '<article class="card card-favorite card-favorite--list" data-fav-id="' + escapeHtml(b.id) + '">' +
@@ -2255,11 +2175,6 @@
         '</div></div>' +
       '</article>'
     );
-  }
-
-  function renderFavoriteCard(b) {
-    if (state.densityMode === 'list') return renderFavoriteCardList(b);
-    return renderFavoriteCardComfy(b);
   }
 
   // お気に入りは検索/タグ/グループの絞り込みルールを通常セクションと共有する(getSearchTagFilteredを再利用)。
@@ -2276,11 +2191,10 @@
     }
     // お気に入りは state.sortMode(手動順/よく使う順)の影響を受けず、常に favoriteOrder で固定表示する。
     var items = pinned.slice().sort(compareFavoriteOrder);
-    var gridModifier = state.densityMode === 'list' ? ' group-grid--list' : '';
     container.innerHTML =
       '<section class="favorites-section">' +
         '<div class="group-section-header"><h2 class="group-section-title">お気に入り</h2><span class="group-section-count">' + items.length + ' 件</span></div>' +
-        '<div class="group-grid' + gridModifier + '">' + items.map(renderFavoriteCard).join('') +
+        '<div class="group-grid group-grid--list">' + items.map(renderFavoriteCard).join('') +
         '</div>' +
       '</section>';
 
@@ -2324,9 +2238,8 @@
     container.innerHTML = sectionKeys.length
       ? sectionKeys.map(function (key) {
           var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
-          var gridModifier = state.densityMode === 'compact' ? ' group-grid--compact' : state.densityMode === 'list' ? ' group-grid--list' : '';
           var body = items.length
-            ? '<div class="group-grid' + gridModifier + '" data-group-grid="' + escapeHtml(key || '') + '">' +
+            ? '<div class="group-grid group-grid--list" data-group-grid="' + escapeHtml(key || '') + '">' +
                 items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
               '</div>'
             : '<div class="group-section-empty" data-group-grid="' + escapeHtml(key || '') + '">該当するブックマークがありません。ここにドラッグして移動できます。</div>';
@@ -2821,118 +2734,7 @@
     moveGroupSection(key, names[targetIdx], direction > 0);
   }
 
-  function renderCardComfy(b) {
-    var scheme = b.scheme;
-    var iconHtml = resolveIconHtml(b);
-
-    var tagsHtml = (b.tags || []).map(function (t) {
-      return '<button type="button" tabindex="-1" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
-    }).join('');
-
-    var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span><span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
-
-    var checkboxHtml = state.selectMode
-      ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
-      : '';
-
-    var credentialsHtml = '';
-    if (b.loginId || b.loginPassword) {
-      credentialsHtml = '<div class="card-credentials">' +
-        (b.loginId
-          ? '<span class="cred-row"><span class="cred-label">ID</span><span class="cred-value">' + escapeHtml(b.loginId) + '</span>' +
-            '<button type="button" tabindex="-1" class="btn-quiet" data-action="copy-login-id">コピー</button></span>'
-          : '') +
-        (b.loginPassword
-          ? '<span class="cred-row"><span class="cred-label">PW</span><span class="cred-value" data-action="password-display">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span>' +
-            '<button type="button" tabindex="-1" class="btn-quiet" data-action="toggle-reveal">表示</button>' +
-            '<button type="button" tabindex="-1" class="btn-quiet" data-action="copy-login-password">コピー</button></span>'
-          : '') +
-      '</div>';
-    }
-
-    var memoHtml = b.memo ? '<p class="card-memo">' + escapeHtml(b.memo) + '</p>' : '';
-
-    var pathCopyHtml = (scheme === 'file' || scheme === 'unc')
-      ? '<button type="button" tabindex="-1" class="btn-quiet" data-action="copy-path">パスをコピー</button>'
-      : '';
-
-    return (
-      '<article class="card" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
-        '<div class="card-stub">' + grip + '</div>' +
-        '<div class="card-body">' +
-          '<div class="card-top">' +
-            checkboxHtml +
-            '<div class="seal">' + iconHtml + '</div>' +
-            '<div class="card-title-wrap">' +
-              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
-            '</div>' +
-          '</div>' +
-          (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
-          credentialsHtml +
-          memoHtml +
-          '<div class="card-footer">' +
-            '<div class="card-actions">' +
-              pathCopyHtml +
-              '<button type="button" tabindex="-1" class="btn-quiet' + (b.pinned ? ' active' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
-              '<button type="button" tabindex="-1" class="btn-quiet" data-action="edit">編集</button>' +
-              '<button type="button" tabindex="-1" class="btn-danger" data-action="delete">削除</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</article>'
-    );
-  }
-
-  function renderCardCompact(b) {
-    var scheme = b.scheme;
-    var iconHtml = resolveIconHtml(b);
-    var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
-    var checkboxHtml = state.selectMode
-      ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
-      : '';
-    var memoFilled = !!b.memo;
-    var idFilled = !!b.loginId;
-    var pwFilled = !!b.loginPassword;
-
-    var indicatorsHtml =
-      '<span class="ind-btn' + (memoFilled ? ' filled' : ' empty') + '" aria-hidden="true"><svg><use href="#ic-memo"></use></svg></span>' +
-      (idFilled
-        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
-      (pwFilled
-        ? '<button type="button" tabindex="-1" class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>');
-
-    var pathCopyHtml = (scheme === 'file' || scheme === 'unc')
-      ? '<button type="button" tabindex="-1" class="icon-btn" data-action="copy-path" aria-label="パスをコピー">&#10697;</button>'
-      : '';
-
-    return (
-      '<article class="card card--compact" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
-        '<div class="card-stub">' + grip + '</div>' +
-        '<div class="card-body">' +
-          '<div class="card-top">' +
-            checkboxHtml +
-            '<div class="seal">' + iconHtml + '</div>' +
-            '<div class="card-title-wrap">' +
-              '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
-            '</div>' +
-          '</div>' +
-          '<div class="card-footer">' +
-            '<div class="card-actions">' +
-              '<button type="button" tabindex="-1" class="icon-btn' + (b.pinned ? ' amber' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
-              indicatorsHtml +
-              pathCopyHtml +
-              '<button type="button" tabindex="-1" class="icon-btn" data-action="edit" aria-label="編集">&#9998;</button>' +
-              '<button type="button" tabindex="-1" class="icon-btn" data-action="delete" aria-label="削除">&#10005;</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</article>'
-    );
-  }
-
-  function renderCardList(b) {
+  function renderCard(b) {
     var iconHtml = resolveIconHtml(b);
     var checkboxHtml = state.selectMode
       ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
@@ -2972,12 +2774,6 @@
         '</div></div>' +
       '</article>'
     );
-  }
-
-  function renderCard(b) {
-    if (state.densityMode === 'compact') return renderCardCompact(b);
-    if (state.densityMode === 'list') return renderCardList(b);
-    return renderCardComfy(b);
   }
 
   function renderEditCard(b) {
