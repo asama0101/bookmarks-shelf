@@ -120,13 +120,9 @@ Each file's script is a single IIFE with these layers, in order:
    or the corresponding × on the filter indicator chip, same as before tabs existed.
    Tab switching is click-only, via the `#sidebar-tab-tag`/`#sidebar-tab-group` buttons calling `switchSidebarTab()` — there is no keyboard shortcut for it (a `t`/`g` shortcut pair existed earlier but was removed, along with `n` for opening the add form, `?` for the help panel, and `x` for clearing all filters; every one of those actions remains reachable by clicking its header/nav button, only the keyboard shortcut was dropped).
    Each of those shortcuts was removed because a corresponding button already existed and performed the same action via a click, making the keyboard shortcut redundant.
-   Clicking a tag-nav button, a group-nav button, a list-row tag chip (see the Render layer paragraph on card markup below), or this "すべて解除" button also scrolls the page back to the top (`window.scrollTo({ top: 0, behavior: 'auto' })`), since any of these changes which content is visible further down the page. The default tab on load is グループ (group), not タグ (tag) — this default
-   is expressed in two separate places that must be kept in sync by hand: `state.sidebarTab`'s
-   initial value (`'group'`) and the tab buttons'/panels' hardcoded `aria-selected`/`hidden`
-   attributes in the markup. `switchSidebarTab()` is never called on startup, so nothing reconciles
-   the two automatically — changing only one (e.g. flipping the initial `state.sidebarTab` without
-   also updating the markup, or vice versa) produces a silent bug where the internal state and the
-   on-screen tab disagree.
+   Clicking a tag-nav button, a group-nav button, a list-row tag chip (see the Render layer paragraph on card markup below), or this "すべて解除" button also scrolls the page back to the top (`window.scrollTo({ top: 0, behavior: 'auto' })`), since any of these changes which content is visible further down the page.
+   The default tab on load is グループ (group), not タグ (tag) — this default is expressed in two separate places that must be kept in sync by hand: `state.sidebarTab`'s initial value (`'group'`) and the tab buttons'/panels' hardcoded `aria-selected`/`hidden` attributes in the markup.
+   `switchSidebarTab()` is never called on startup, so nothing reconciles the two automatically — changing only one (e.g. flipping the initial `state.sidebarTab` without also updating the markup, or vice versa) produces a silent bug where the internal state and the on-screen tab disagree.
 
    A pinned bookmark (`b.pinned`) additionally renders in a standalone **favorites section** (`#favorites-section`, populated by `renderFavoritesSection()`, called from `render()` right before `renderSections()`) — a DOM tree kept entirely separate from `#group-sections`.
    It's built from `renderFavoriteCard()` markup (`data-fav-id`, not `data-card-id`), which supports opening the link, unpinning, copying the login ID/password (via the same shared `.ind-btn`/`renderCredentialIndicators()` helper `renderCard()` uses), and editing.
