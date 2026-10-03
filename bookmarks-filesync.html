@@ -1107,15 +1107,15 @@
   .group-grid--list { display: flex; flex-direction: column; gap: 0; }
 
   .group-grid--favorites {
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
   }
 
   .card-favorite--grid {
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
-    padding: 4px 6px;
+    gap: 6px;
+    padding: 8px 10px;
     border-radius: 8px;
     border: 1px solid rgba(62, 84, 87, 0.18);
     box-shadow: none;
@@ -1133,11 +1133,6 @@
     min-width: 0;
   }
   .card-favorite--grid .card-footer { margin-top: 0; }
-  .card-favorite--grid .card-actions { gap: 4px; }
-  .card-favorite--grid .icon-btn { width: 16px; height: 16px; font-size: 0.7rem; }
-  .card-favorite--grid .ind-btn { width: 16px; height: 16px; }
-  .card-favorite--grid .ind-btn svg { width: 10px; height: 10px; }
-  .card-favorite--grid .ind-btn.empty::after { width: 11px; }
   .fav-grip { color: var(--amber); font-size: 0.8rem; cursor: grab; flex: 0 0 auto; }
 
   /* ---------- 編集フォーム(カード内) ---------- */
