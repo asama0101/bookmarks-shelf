@@ -1123,6 +1123,8 @@
   }
   .card--list .card-footer { margin-top: 0; flex: 0 0 auto; }
   .card--list .card-stub { width: 14px; }
+  .card--list .card-tags { margin: 0; gap: 4px; }
+  .card--list .tag-stamp { transform: none; }
 
   .row-memo-preview {
     font-size: 0.72rem;
@@ -2760,6 +2762,9 @@
   function renderCard(b) {
     var iconHtml = resolveIconHtml(b);
     var grip = !state.selectMode ? '<span class="stub-grip" aria-hidden="true">&#8942;</span>' : '';
+    var tagsHtml = (b.tags || []).map(function (t) {
+      return '<button type="button" tabindex="-1" class="tag-stamp clickable' + (state.tag === t ? ' active' : '') + '" data-action="filter-tag" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + '</button>';
+    }).join('');
     var checkboxHtml = state.selectMode
       ? '<input type="checkbox" tabindex="-1" class="card-select" data-action="select" aria-label="このブックマークを選択"' + (state.selectedIds.has(b.id) ? ' checked' : '') + '>'
       : '';
@@ -2789,6 +2794,7 @@
         checkboxHtml +
         '<div class="seal">' + iconHtml + '</div>' +
         '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + escapeHtml(b.title) + '</a></h3>' +
+        (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
         memoPreviewHtml +
         '<div class="card-footer"><div class="card-actions">' +
           '<button type="button" tabindex="-1" class="icon-btn' + (b.pinned ? ' amber' : '') + '" data-action="toggle-pin" aria-label="' + (b.pinned ? 'ピン留めを解除' : 'ピン留め') + '">' + (b.pinned ? '★' : '☆') + '</button>' +
