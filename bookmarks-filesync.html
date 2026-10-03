@@ -1302,9 +1302,6 @@
   <h2>キーボードショートカット</h2>
   <dl class="help-grid">
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
-    <dt><kbd>n</kbd></dt><dd>追加パネルの開閉</dd>
-    <dt><kbd>?</kbd></dt><dd>このヘルプの開閉</dd>
-    <dt><kbd>x</kbd></dt><dd>タグ・グループの絞り込みをすべて解除</dd>
     <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; タグ管理 &rarr; フォーム &rarr; 選択モードの順に閉じ、何も無ければフォーカスを外す</dd>
     <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></dt><dd>グループ間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
     <dt><kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>同じグループ内でカード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
@@ -1313,8 +1310,6 @@
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
     <dt><kbd>e</kbd></dt><dd>フォーカス中のカードを編集</dd>
     <dt><kbd>Delete</kbd></dt><dd>フォーカス中のカードを削除</dd>
-    <dt><kbd>t</kbd></dt><dd>タグタブに切り替えてタグ絞り込みナビへフォーカス</dd>
-    <dt><kbd>g</kbd></dt><dd>グループタブに切り替えてグループ絞り込みナビへフォーカス</dd>
   </dl>
   <div class="bookmarklet-generator">
     <h3>ブックマークレット</h3>
@@ -3193,30 +3188,6 @@
       case '/':
         e.preventDefault(); // フォーカス移動後に '/' が入力されてしまうのを防ぐ
         document.getElementById('search-input').focus();
-        return true;
-      case 'n':
-        e.preventDefault();
-        clickHeaderButton('toggle-add-btn');
-        return true;
-      case 't':
-        e.preventDefault();
-        switchSidebarTab('tag');
-        var firstTagBtn = document.querySelector('#tag-nav button');
-        if (firstTagBtn) firstTagBtn.focus();
-        return true;
-      case 'g':
-        e.preventDefault();
-        switchSidebarTab('group');
-        var firstGroupBtn = document.querySelector('#group-nav button');
-        if (firstGroupBtn) firstGroupBtn.focus();
-        return true;
-      case '?':
-        e.preventDefault();
-        toggleHelp();
-        return true;
-      case 'x':
-        e.preventDefault();
-        document.getElementById('clear-all-filters-btn').click();
         return true;
       case 'ArrowDown':
       case 'ArrowRight':
