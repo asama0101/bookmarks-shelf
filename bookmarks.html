@@ -886,6 +886,17 @@
 
   /* ---------- データ層 ---------- */
 
+  // 廃止したフィールド(タグ・お気に入り・よく使う)を取り除く。旧形式のデータの読み込み用。
+  function stripLegacyFields(list) {
+    list.forEach(function (b) {
+      delete b.tags;
+      delete b.pinned;
+      delete b.favoriteOrder;
+      delete b.lastAccessed;
+      delete b.accessCount;
+    });
+  }
+
   function loadData() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -899,6 +910,9 @@
       // グループ並べ替え機能の導入前に保存されたデータには groupOrder が無いため、現在のアルファベット順で補完する
       var needsGroupOrderMigration = parsed.some(function (b) { return typeof b.groupOrder !== 'number'; });
       if (needsGroupOrderMigration) assignGroupOrder(parsed);
+
+      // 廃止したフィールドは読み込み時に捨てる。ディスクへは次の保存で反映される
+      stripLegacyFields(parsed);
 
       if (needsOrderMigration || needsGroupOrderMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       return parsed;
