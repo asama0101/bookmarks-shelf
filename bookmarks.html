@@ -322,6 +322,41 @@
     align-items: start;
   }
 
+  /* ---------- よく開くサイト(直近の利用が多い順のチップ帯) ---------- */
+
+  .top-sites {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 16px;
+  }
+  .top-sites[hidden] { display: none; }
+  .top-sites-label {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-right: 4px;
+  }
+  .top-site {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 14em;
+    padding: 5px 12px 5px 8px;
+    background: var(--card);
+    border: 1px solid var(--sage);
+    border-radius: 999px;
+    color: var(--ink);
+    font-size: 0.85rem;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .top-site:hover { background: rgba(227, 167, 63, 0.16); border-color: var(--amber); }
+  .top-site-icon { display: flex; flex-shrink: 0; }
+  .top-site-icon img, .top-site-icon svg { width: 14px; height: 14px; }
+  .top-site-title { overflow: hidden; text-overflow: ellipsis; }
+
   .group-tile {
     display: flex;
     align-items: baseline;
@@ -835,13 +870,14 @@
 
 <div class="layout">
   <main class="main">
+    <nav class="top-sites" id="top-sites" aria-label="よく開くサイト" hidden></nav>
     <p class="result-count" id="result-count"></p>
     <div id="group-sections"></div>
   </main>
 </div>
 
 <footer class="data-controls">
-  <span>bookmark-shelf v1.0.0</span>
+  <span>bookmark-shelf v1.1.0</span>
   <span>データはこの端末のブラウザ内(localStorage)に保存されます。</span>
 </footer>
 
@@ -875,6 +911,8 @@
   'use strict';
 
   var STORAGE_KEY = 'bookmarks_data';
+  var RECENT_MS = 14 * 24 * 60 * 60 * 1000; // 「よく開く」の集計期間(14日)
+  var TOP_SITES_MAX = 10;
   var UNGROUPED = null; // 未分類(グループ未割り当て)を表す内部値
 
   var state = {
@@ -897,6 +935,11 @@
     });
   }
 
+  // opens(開いた日時のミリ秒の配列)のうち、集計期間内のものだけを返す
+  function recentOpens(b, now) {
+    return (b.opens || []).filter(function (t) { return now - t <= RECENT_MS; });
+  }
+
   function loadData() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -913,6 +956,10 @@
 
       // 廃止したフィールドは読み込み時に捨てる。ディスクへは次の保存で反映される
       stripLegacyFields(parsed);
+
+      // 集計期間より古い開いた記録は読み込み時に捨てる。ディスクへは次の保存で反映される
+      var now = Date.now();
+      parsed.forEach(function (b) { if (b.opens) b.opens = recentOpens(b, now); });
 
       if (needsOrderMigration || needsGroupOrderMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       return parsed;
@@ -1101,6 +1148,7 @@
       loginId: loginId,
       loginPassword: loginPassword,
       memo: memo,
+      opens: Array.isArray(raw.opens) ? raw.opens.filter(function (t) { return typeof t === 'number' && t <= Date.now(); }) : undefined,
       scheme: scheme,
       domain: deriveDomain(url, scheme),
       order: 0 // インポート確定後にファイル内の並び順で採番し直す
@@ -1175,6 +1223,7 @@
     // 編集フォーム・追加フォームで選択中のグループが消滅した場合も同様に解除する
     if (editFormSelectedGroup !== null && getGroups().indexOf(editFormSelectedGroup) === -1) editFormSelectedGroup = null;
     if (addFormSelectedGroup !== null && getGroups().indexOf(addFormSelectedGroup) === -1) addFormSelectedGroup = null;
+    renderTopSites();
     renderSections();
     refreshAddFormChipPickers();
     if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
@@ -1265,6 +1314,43 @@
     var pop = document.querySelector('#group-sections .group-popover');
     if (pop) pop.classList.toggle('ghost', on);
   }
+
+  // 直近の集計期間に開いた回数が多い順(同数は最後に開いたのが新しい順)に最大 TOP_SITES_MAX 件。記録が無ければ帯ごと隠す。
+  function renderTopSites() {
+    var el = document.getElementById('top-sites');
+    var now = Date.now();
+    var sites = bookmarks
+      .map(function (b) {
+        var t = recentOpens(b, now);
+        return { b: b, count: t.length, last: Math.max.apply(null, t) };
+      })
+      .filter(function (x) { return x.count > 0; })
+      .sort(function (x, y) { return y.count - x.count || y.last - x.last; })
+      .slice(0, TOP_SITES_MAX);
+
+    el.hidden = !sites.length;
+    el.innerHTML = sites.length
+      ? '<span class="top-sites-label">よく開く</span>' + sites.map(function (x) {
+          var b = x.b;
+          return '<a class="top-site" href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" data-card-id="' + escapeHtml(b.id) + '" title="' + escapeHtml(b.title) + '">' +
+            '<span class="top-site-icon">' + resolveIconHtml(b) + '</span>' +
+            '<span class="top-site-title">' + escapeHtml(b.title) + '</span></a>';
+        }).join('')
+      : '';
+  }
+
+  // 行クリック・Enter・チップのどれも、最終的にリンクの click を経由するため、ここで開いた日時を記録する。
+  // 保存だけで render() は呼ばない(開く操作を妨げない。チップは次の描画で更新される)。
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('.card-title a, .top-site');
+    if (!link) return;
+    var id = link.closest('[data-card-id]').getAttribute('data-card-id');
+    var b = bookmarks.find(function (x) { return x.id === id; });
+    if (!b) return;
+    var now = Date.now();
+    b.opens = recentOpens(b, now).concat(now);
+    saveData(bookmarks);
+  });
 
   function renderSections() {
     var container = document.getElementById('group-sections');
