@@ -807,6 +807,7 @@
   <div class="header-actions">
     <button class="btn btn-amber" id="toggle-add-btn" type="button">+ 追加</button>
     <button class="btn btn-ghost btn-compact" id="group-manage-open-btn" type="button">グループ管理</button>
+    <button class="btn btn-ghost btn-compact" id="auto-group-btn" type="button">未分類を自動分類</button>
     <button class="btn btn-ghost" id="export-btn" type="button">エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button">インポート</button>
     <button class="btn btn-ghost" id="help-btn" type="button">ヘルプ</button>
@@ -877,7 +878,7 @@
 </div>
 
 <footer class="data-controls">
-  <span>bookmark-shelf v1.1.0</span>
+  <span>bookmark-shelf v1.2.0</span>
   <span>データはこの端末のブラウザ内(localStorage)に保存されます。</span>
 </footer>
 
@@ -1184,6 +1185,26 @@
       if (!(b.group in order) || b.groupOrder < order[b.group]) order[b.group] = b.groupOrder;
     });
     return Object.keys(order).sort(function (a, b) { return order[a] - order[b] || a.localeCompare(b); });
+  }
+
+  // 自動分類の行き先。タイトル+URL+メモに含まれるグループ名(最長)→同じdomainの既存ブックマークのグループ(件数最多)の順に探す。
+  // 同点は getGroups() の順(groupOrder が小さいほう)。決まらなければ null(未分類)。memo は null でもよい。
+  function guessGroup(title, url, memo, domain) {
+    var text = (title + ' ' + url + ' ' + (memo || '')).toLowerCase();
+    var names = getGroups();
+    var best = null;
+    names.forEach(function (name) {
+      if (text.indexOf(name.toLowerCase()) !== -1 && (best === null || name.length > best.length)) best = name;
+    });
+    if (best !== null || !domain) return best;
+    var counts = Object.create(null);
+    bookmarks.forEach(function (b) {
+      if (b.group && b.domain === domain) counts[b.group] = (counts[b.group] || 0) + 1;
+    });
+    names.forEach(function (name) {
+      if (counts[name] && (best === null || counts[name] > counts[best])) best = name;
+    });
+    return best;
   }
 
   /* ---------- フィルタ・ソート(表示区画は全グループ+未分類。検索語があればヒット0件の区画を除く) ---------- */
@@ -1903,9 +1924,13 @@
   var newGroupChipsEl = document.getElementById('new-group-chips');
   var newGroupTextInput = document.getElementById('new-group-text');
   var addFormSelectedGroup = null;
+  var newMemoInput = document.getElementById('new-memo');
+  // チップの選択・グループ名の入力があれば true。以後は自動の事前選択で上書きしない。
+  var addFormGroupManual = false;
 
   function refreshAddFormChipPickers() {
     renderGroupChipList(newGroupChipsEl, function () { return addFormSelectedGroup; }, function (val) {
+      addFormGroupManual = true;
       addFormSelectedGroup = val;
       if (val !== null) newGroupTextInput.value = '';
       refreshAddFormChipPickers();
@@ -1915,10 +1940,20 @@
   // 新規グループ欄に文字を入力したら、既存チップの単一選択は自動解除する(グループは単一値であるという制約をUI上でも保つ)
   newGroupTextInput.addEventListener('input', function () {
     if (newGroupTextInput.value.trim() === '') return;
+    addFormGroupManual = true;
     if (addFormSelectedGroup === null) return;
     addFormSelectedGroup = null;
     refreshAddFormChipPickers();
   });
+
+  // URL・タイトル・メモの入力に合わせて、自動分類の行き先をグループのチップに事前選択して見せる
+  function previewAddFormGroup() {
+    if (addFormGroupManual) return;
+    var url = newUrlInput.value.trim();
+    var scheme = classifyUrl(url);
+    addFormSelectedGroup = scheme ? guessGroup(newTitleInput.value, url, newMemoInput.value, deriveDomain(url, scheme)) : null;
+    refreshAddFormChipPickers();
+  }
 
   document.getElementById('toggle-add-btn').addEventListener('click', function () {
     addPanel.hidden = !addPanel.hidden;
@@ -1932,6 +1967,9 @@
     if (!scheme) return;
     newTitleInput.value = deriveTentativeTitle(newUrlInput.value.trim(), scheme);
   });
+  [newUrlInput, newTitleInput, newMemoInput].forEach(function (el) {
+    el.addEventListener('input', previewAddFormGroup);
+  });
 
   addForm.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -1943,6 +1981,7 @@
     }
 
     var title = newTitleInput.value.trim() || deriveTentativeTitle(url, scheme);
+    var domain = deriveDomain(url, scheme);
     var newGroupTyped = newGroupTextInput.value.trim();
     var group = newGroupTyped || addFormSelectedGroup;
     var loginId = document.getElementById('new-login-id').value.trim() || null;
@@ -1959,7 +1998,7 @@
       loginPassword: loginPassword,
       memo: memo,
       scheme: scheme,
-      domain: deriveDomain(url, scheme),
+      domain: domain,
       order: bookmarks.length
     });
 
@@ -1967,7 +2006,30 @@
     state.openGroup = group || ''; // 追加先のグループを開いて見せる
     addForm.reset();
     addFormSelectedGroup = null;
+    addFormGroupManual = false;
     addPanel.hidden = true;
+    render();
+  });
+
+  // 未分類のうち、自動分類の行き先が決まるものをまとめて移す。行き先は実行前のグループ構成で判定する。
+  document.getElementById('auto-group-btn').addEventListener('click', function () {
+    var plan = [];
+    bookmarks.forEach(function (b) {
+      if (b.group) return;
+      var g = guessGroup(b.title, b.url, b.memo, b.domain);
+      if (g !== null) plan.push({ bookmark: b, group: g });
+    });
+    if (plan.length === 0) {
+      alert('自動分類できる未分類のブックマークはありません。');
+      return;
+    }
+    var lines = plan.map(function (p) { return p.bookmark.title + ' → ' + p.group; });
+    if (!confirm(plan.length + ' 件を自動分類します。\n\n' + lines.join('\n') + '\n\nよろしいですか?')) return;
+    plan.forEach(function (p) {
+      p.bookmark.group = p.group;
+      p.bookmark.groupOrder = getGroupOrderForName(p.group);
+    });
+    saveData(bookmarks);
     render();
   });
 
