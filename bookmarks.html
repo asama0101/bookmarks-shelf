@@ -294,16 +294,33 @@
 
   /* ---------- レイアウト ---------- */
 
+  /* 左(よく開くサイト・タグ) / 中央(一覧) / 右(詳細)の3列 */
   .layout {
-    display: flex;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 220px minmax(0, 760px) 300px;
+    justify-content: center;
+    gap: 20px;
+    align-items: start;
+    padding: 24px;
     min-height: calc(100vh - 64px);
   }
 
-  .main {
-    flex: 1;
-    padding: 24px;
+  .main { min-width: 0; }
+
+  .side-col, .detail {
+    position: sticky;
+    top: calc(var(--header-h) + 12px);
+    max-height: calc(100vh - var(--header-h) - 24px);
+    overflow-y: auto;
     min-width: 0;
+  }
+  .side-col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; }
+  .side-label {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    margin: 0 0 8px;
+    font-weight: 600;
   }
 
   .result-count {
@@ -316,58 +333,48 @@
   /* ---------- タグバー(タグ名+件数のタイル)と、一覧の区画 ---------- */
 
   .tag-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-    gap: 10px;
-    align-items: start;
-    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
   }
 
-  /* ---------- よく開くサイト(直近の利用が多い順のチップ帯) ---------- */
+  /* ---------- よく開くサイト(直近の利用が多い順の縦リスト) ---------- */
 
   .top-sites {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    margin: 0 0 16px;
+    flex-direction: column;
+    gap: 2px;
   }
   .top-sites[hidden] { display: none; }
-  .top-sites-label {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    color: var(--ink-soft);
-    margin-right: 4px;
-  }
   .top-site {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    max-width: 14em;
-    padding: 5px 12px 5px 8px;
-    background: var(--card);
-    border: 1px solid var(--sage);
-    border-radius: 999px;
+    gap: 7px;
+    padding: 5px 6px;
+    border-radius: 5px;
     color: var(--ink);
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     text-decoration: none;
     white-space: nowrap;
   }
-  .top-site:hover { background: rgba(227, 167, 63, 0.16); border-color: var(--amber); }
+  .top-site:hover { background: rgba(227, 167, 63, 0.16); }
+  .top-site-rank, .top-site-count { font-family: var(--font-mono); font-size: 0.72rem; flex-shrink: 0; }
+  .top-site-rank { color: var(--ink-soft); width: 1.2em; text-align: right; }
+  .top-site-count { color: var(--amber-ink); }
   .top-site-icon { display: flex; flex-shrink: 0; }
   .top-site-icon img, .top-site-icon svg { width: 14px; height: 14px; }
-  .top-site-title { overflow: hidden; text-overflow: ellipsis; }
+  .top-site-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
   .tag-tile {
-    display: flex;
+    display: inline-flex;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 4px;
     text-align: left;
     background: var(--card);
     border: 1px solid var(--sage);
-    border-radius: 6px;
-    padding: 10px 12px;
+    border-radius: 999px;
+    padding: 2px 10px;
     color: var(--ink);
     cursor: pointer;
   }
@@ -379,7 +386,7 @@
   .tag-tile.drop-after { box-shadow: 3px 0 0 var(--amber); }
   .tag-tile-name {
     font-family: var(--font-display);
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     overflow-wrap: anywhere;
   }
   .tag-tile-count {
@@ -505,6 +512,39 @@
     flex: 1 1 auto;
   }
   .tag-rename-form .btn, .tag-rename-form .btn-quiet { padding: 4px 10px; font-size: 0.75rem; }
+
+  .tag-manage-confirm { flex-direction: column; align-items: stretch; gap: 6px; font-size: 0.85rem; }
+  .tag-confirm-merge { color: var(--wine); font-weight: 700; }
+  .tag-confirm-titles { margin: 0; padding-left: 1.2em; font-size: 0.78rem; color: var(--ink-soft); }
+  .tag-confirm-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .tag-confirm-actions .btn, .tag-confirm-actions .btn-quiet { padding: 4px 10px; font-size: 0.75rem; }
+
+  /* ---------- 自動タグ付けモーダル ---------- */
+
+  .modal.modal-wide { max-width: 640px; }
+  .auto-tag-hint { font-size: 0.78rem; color: var(--ink-soft); margin: 0 0 8px; }
+  .auto-tag-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .auto-tag-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--sage);
+    border-radius: 6px;
+    background: rgba(27, 53, 56, 0.03);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .auto-tag-row input { margin-top: 3px; flex: none; }
+  .auto-tag-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .auto-tag-name { font-family: var(--font-display); font-weight: 700; overflow-wrap: anywhere; }
+  .auto-tag-meta { font-size: 0.76rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+  .auto-tag-removed { color: var(--wine); font-weight: 700; }
+  .auto-tag-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .auto-tag-toolbar .btn-quiet { padding: 3px 10px; font-size: 0.75rem; }
+  .auto-tag-empty { font-size: 0.85rem; color: var(--ink-soft); }
+  .auto-tag-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .auto-tag-actions .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
   .search-no-results {
     grid-column: 1 / -1;
@@ -658,31 +698,6 @@
   }
   .copy-toast.visible { opacity: 1; transform: translateY(0); }
 
-  .ind-btn {
-    box-sizing: border-box;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-    position: relative;
-    border: none;
-    background: transparent;
-    padding: 0;
-  }
-  .ind-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 1.6; }
-  .ind-btn.filled { color: var(--amber-ink); cursor: pointer; }
-  .ind-btn.empty { color: var(--sage); opacity: 0.55; cursor: default; pointer-events: none; }
-  .ind-btn.empty::after {
-    content: '';
-    position: absolute;
-    width: 14px;
-    height: 1.3px;
-    background: var(--sage);
-    transform: rotate(-45deg);
-  }
-
   .card--list {
     align-items: center;
     gap: 8px;
@@ -694,10 +709,14 @@
   }
   .card--list:hover { background: rgba(227, 167, 63, 0.16); }
   .card--list { cursor: pointer; }
+  .card--list[aria-current="true"] { background: rgba(227, 167, 63, 0.24); border-left: 3px solid var(--amber); padding-left: 5px; }
   .card--list .seal { width: 16px; height: 16px; }
   .card--list .seal img, .card--list .seal svg { width: 10px; height: 10px; }
   .card--list .row-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .card--list .row-head { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   .card--list .card-title {
+    flex: 0 1 auto;
+    min-width: 0;
     font-size: 0.82rem;
     white-space: nowrap;
     overflow: hidden;
@@ -723,7 +742,46 @@
 
   .list-grid { display: flex; flex-direction: column; gap: 0; }
 
-  .row-tags { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  /* スクロールしても、ヘッダーの下に固定する(一覧が透けないよう背景を塗る) */
+  .list-toolbar {
+    position: sticky;
+    top: var(--header-h);
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 0 0 8px;
+    padding: 8px 0;
+    background: var(--ivory);
+  }
+  .list-toolbar .result-count { margin: 0; }
+  .view-toggle { display: flex; }
+  .view-toggle-btn {
+    font-size: 0.78rem;
+    padding: 3px 12px;
+    border: 1px solid var(--sage);
+    background: var(--card);
+    color: var(--ink);
+  }
+  .view-toggle-btn:first-child { border-radius: 999px 0 0 999px; }
+  .view-toggle-btn:last-child { border-radius: 0 999px 999px 0; border-left: 0; }
+  .view-toggle-btn[aria-pressed="true"] { background: var(--ink); color: var(--ivory); border-color: var(--ink); }
+
+  .tag-group + .tag-group { margin-top: 14px; }
+  .tag-group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 4px;
+    padding: 0 8px;
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+  }
+  .tag-group-count { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); font-weight: 400; }
+
+  .row-tags { flex: 0 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
   .row-tag {
     font-family: var(--font-mono);
     font-size: 0.7rem;
@@ -736,6 +794,27 @@
     cursor: pointer;
   }
   .row-tag:hover { background: rgba(227, 167, 63, 0.16); border-color: var(--amber); }
+
+  /* ---------- 詳細パネル(選択した1件) ---------- */
+
+  .detail {
+    background: var(--card);
+    border: 1px solid var(--sage);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .detail-open { display: block; margin-top: 14px; padding: 9px 12px; text-align: center; text-decoration: none; }
+  .detail-empty { margin: 0; font-size: 0.84rem; color: var(--ink-soft); }
+  .detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .detail-edit { margin-left: auto; align-self: flex-start; flex: none; }
+  .detail-title { margin: 0; font-family: var(--font-display); font-size: 0.95rem; line-height: 1.4; overflow-wrap: anywhere; }
+  .detail dl { margin: 0; display: grid; gap: 10px; }
+  .detail dt { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); margin-bottom: 2px; }
+  .detail dd { margin: 0; font-size: 0.84rem; line-height: 1.55; overflow-wrap: anywhere; }
+  .detail dd.mono { font-family: var(--font-mono); font-size: 0.76rem; }
+  .detail-copy { font-family: inherit; font-size: 0.74rem; margin-left: 6px; padding: 0 7px; border: 1px solid var(--sage); border-radius: 4px; background: transparent; color: var(--ink); }
+  .detail-copy:hover { background: rgba(227, 167, 63, 0.16); }
+  .detail-warn { margin: 0; font-size: 0.7rem; color: var(--ink-soft); }
 
   /* ---------- 編集フォーム(カード内) ---------- */
 
@@ -754,8 +833,14 @@
     flex-wrap: wrap;
   }
 
+  @media (max-width: 1000px) {
+    .layout { grid-template-columns: 200px minmax(0, 1fr); }
+    .detail { grid-column: 1 / -1; position: static; max-height: none; }
+  }
+
   @media (max-width: 760px) {
-    .layout { flex-direction: column; }
+    .layout { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+    .side-col { position: static; max-height: none; }
     .add-grid { grid-template-columns: 1fr 1fr; }
     .add-grid > .field:nth-child(1) { grid-column: 1 / -1; }
   }
@@ -772,7 +857,7 @@
   <div class="header-actions">
     <button class="btn btn-amber" id="toggle-add-btn" type="button">+ 追加</button>
     <button class="btn btn-ghost btn-compact" id="tag-manage-open-btn" type="button">タグ管理</button>
-    <button class="btn btn-ghost btn-compact" id="auto-tag-btn" type="button">タグなしを自動タグ付け</button>
+    <button class="btn btn-ghost btn-compact" id="auto-tag-btn" type="button">自動タグ付け</button>
     <button class="btn btn-ghost" id="export-btn" type="button">エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button">インポート</button>
     <button class="btn btn-ghost" id="help-btn" type="button">ヘルプ</button>
@@ -834,16 +919,31 @@
 </section>
 
 <div class="layout">
+  <div class="side-col">
+    <section id="top-sites-section" hidden>
+      <h2 class="side-label">よく開くサイト</h2>
+      <nav class="top-sites" id="top-sites" aria-label="よく開くサイト"></nav>
+    </section>
+    <section id="tag-section" hidden>
+      <h2 class="side-label">タグ</h2>
+      <nav class="tag-bar" id="tag-bar" aria-label="タグ"></nav>
+    </section>
+  </div>
   <main class="main">
-    <nav class="top-sites" id="top-sites" aria-label="よく開くサイト" hidden></nav>
-    <p class="result-count" id="result-count"></p>
-    <nav class="tag-bar" id="tag-bar" aria-label="タグ"></nav>
+    <div class="list-toolbar">
+      <p class="result-count" id="result-count"></p>
+      <div class="view-toggle" role="group" aria-label="並び順">
+        <button type="button" class="view-toggle-btn" data-view="flat" aria-pressed="true">現在の並び</button>
+        <button type="button" class="view-toggle-btn" data-view="grouped" aria-pressed="false">タグごと</button>
+      </div>
+    </div>
     <section class="list-section"><div class="list-grid" id="bookmark-list"></div></section>
   </main>
+  <aside class="detail" id="detail" aria-label="詳細"></aside>
 </div>
 
 <footer class="data-controls">
-  <span>bookmark-shelf v2.0.0</span>
+  <span>bookmark-shelf v2.1.0</span>
   <span>データはこの端末のブラウザ内(localStorage)に保存されます。</span>
 </footer>
 
@@ -853,9 +953,19 @@
       <h2 id="tag-manage-title">タグ管理</h2>
       <button type="button" class="modal-close-btn" id="tag-manage-close-btn" aria-label="閉じる">&times;</button>
     </div>
-    <p class="tag-manage-hint">既存のタグ名に改名すると、2つのタグが統合されます。</p>
+    <p class="tag-manage-hint">既存のタグ名に改名すると、2つのタグが統合されます。改名は、影響を確認してから適用します。</p>
     <ul class="tag-manage-list" id="tag-manage-list"></ul>
     <p class="tag-manage-empty" id="tag-manage-empty" hidden>タグがありません。ブックマークにタグを付けると、ここに表示されます。</p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="auto-tag-overlay" hidden>
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="auto-tag-title">
+    <div class="modal-header">
+      <h2 id="auto-tag-title">自動タグ付け</h2>
+      <button type="button" class="modal-close-btn" id="auto-tag-close-btn" aria-label="閉じる">&times;</button>
+    </div>
+    <div id="auto-tag-body"></div>
   </div>
 </div>
 
@@ -866,12 +976,6 @@
 <template id="icon-globe">
   <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="#3E5457" stroke-width="1.5"/><path d="M3 12h18M12 3c2.8 3 2.8 15 0 18M12 3c-2.8 3-2.8 15 0 18" stroke="#3E5457" stroke-width="1.2"/></svg>
 </template>
-
-<svg style="display:none" aria-hidden="true">
-  <symbol id="ic-memo" viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z" fill="none" stroke="currentColor" stroke-width="1.8"></path><path d="M15 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8"></path></symbol>
-  <symbol id="ic-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4" fill="none" stroke="currentColor" stroke-width="1.8"></circle><path d="M11 12l9-9M17 6l2 2M14 9l2 2" fill="none" stroke="currentColor" stroke-width="1.8"></path></symbol>
-  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"></rect><path d="M8 11V8a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="1.8"></path></symbol>
-</svg>
 
 <script>
 (function () {
@@ -885,9 +989,12 @@
   var state = {
     search: '',
     editingId: null,
-    filterTag: null,        // 絞り込み中のタグのキー(小文字)。無ければnull。保存しない
+    selectedId: null,       // 詳細パネルに出しているブックマークのID。無ければnull。保存しない
+    filterTag: null,       // 絞り込み中のタグのキー(小文字)。無ければnull。保存しない
     filterUntagged: false,  // 「タグなし」で絞り込み中か。保存しない
     editingTag: null,       // タグ管理モーダルで改名中のタグのキー
+    renameDraft: null,      // 改名の入力中(確認の段階を含む)の新しい名前
+    confirmRename: null,    // 改名の影響を確認中のタグのキー
     confirmDeleteTag: null  // タグ管理モーダルで削除の確認中のタグのキー
   };
 
@@ -968,6 +1075,20 @@
 
   var tagOrder = loadTagOrder();
 
+  // 一覧の見せ方: 'flat'(現在の並び)か 'grouped'(タグごと)。不正な値・読めないときは 'flat'
+  var VIEW_MODE_KEY = 'bookmarks_view_mode';
+  state.viewMode = (function () {
+    try { return localStorage.getItem(VIEW_MODE_KEY) === 'grouped' ? 'grouped' : 'flat'; } catch (e) { return 'flat'; }
+  })();
+
+  document.querySelector('.view-toggle').addEventListener('click', function (e) {
+    var btn = e.target.closest('.view-toggle-btn');
+    if (!btn) return;
+    state.viewMode = btn.getAttribute('data-view') === 'grouped' ? 'grouped' : 'flat';
+    try { localStorage.setItem(VIEW_MODE_KEY, state.viewMode); } catch (err) { /* 保存できなくても、このセッションでは切り替わる */ }
+    render();
+  });
+
   function saveTagOrder() {
     localStorage.setItem(TAG_ORDER_KEY, JSON.stringify(tagOrder));
   }
@@ -1034,20 +1155,6 @@
     return '<img src="' + escapeHtml(faviconUrl) + '" alt="" onerror="this.replaceWith(document.getElementById(\'icon-globe\').content.cloneNode(true).firstElementChild)">';
   }
 
-  // renderCard のID/パスワードインジケータ生成。
-  function renderCredentialIndicators(b, tabindexAttr) {
-    var idFilled = !!b.loginId;
-    var pwFilled = !!b.loginPassword;
-    return (
-      (idFilled
-        ? '<button type="button"' + tabindexAttr + ' class="ind-btn filled" data-action="copy-login-id" aria-label="IDをコピー"><svg><use href="#ic-key"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-key"></use></svg></span>') +
-      (pwFilled
-        ? '<button type="button"' + tabindexAttr + ' class="ind-btn filled" data-action="copy-login-password" aria-label="パスワードをコピー"><svg><use href="#ic-lock"></use></svg></button>'
-        : '<span class="ind-btn empty" aria-hidden="true"><svg><use href="#ic-lock"></use></svg></span>')
-    );
-  }
-
   /* ---------- ユーティリティ ---------- */
 
   function escapeHtml(str) {
@@ -1056,7 +1163,7 @@
     });
   }
 
-  // アイコンのみのボタン(.icon-btn/.ind-btn)はテキストを持たないため、
+  // アイコンのみのボタン(.icon-btn)はテキストを持たないため、
   // ボタン直上に浮き出る小さなチップでコピー完了を知らせる。
   // position: fixedでdocument.bodyに追加することで、.cardのoverflow:hiddenによる切り詰めを避ける。
   function showCopyToast(btn) {
@@ -1077,7 +1184,7 @@
 
   // クリップボードAPIが使えない環境向けに、非表示textarea+execCommandへフォールバックする
   function copyToClipboard(text, btn) {
-    var isIconOnly = btn.classList.contains('icon-btn') || btn.classList.contains('ind-btn');
+    var isIconOnly = btn.classList.contains('icon-btn');
     function showSuccess() {
       if (isIconOnly) {
         // titleのhoverツールチップだけではクリック直後に見えないため、ボタン付近に浮き出るチップで視覚フィードバックを与える
@@ -1241,9 +1348,15 @@
   }
 
   // 自動タグ付け。タイトル+URL+メモに含まれる既存のタグ名(大文字小文字・絵文字を区別しない)を、すべて返す。memo は null でもよい。
-  function guessTags(title, url, memo) {
+  // names は、照らすタグ名の一覧(省略時は既存のタグ名)。多数のブックマークで呼ぶときは、tagNamesWith() で1回だけ作って渡す。
+  function guessTags(title, url, memo, names) {
     var text = (title + ' ' + url + ' ' + (memo || '')).toLowerCase();
-    return getTags().filter(function (t) { return text.indexOf(matchKey(t.name)) !== -1; }).map(function (t) { return t.name; });
+    return (names || tagNamesWith()).filter(function (n) { return text.indexOf(matchKey(n)) !== -1; });
+  }
+
+  // 既存のタグ名に、まだ存在しない新しいタグの名前(承認された候補)を加えた一覧
+  function tagNamesWith(newNames) {
+    return getTags().map(function (t) { return t.name; }).concat(newNames || []);
   }
 
   /* ---------- フィルタ・ソート(タグの絞り込み + 検索) ---------- */
@@ -1278,10 +1391,14 @@
     if (state.filterTag !== null && !getTags().some(function (t) { return t.key === state.filterTag; })) state.filterTag = null;
     if (state.filterUntagged && countUntagged() === 0) state.filterUntagged = false;
     // 編集中のブックマークが、絞り込み・検索で見えなくなった場合、見えない編集フォームを破棄する
-    if (state.editingId !== null && !getFiltered().some(function (b) { return b.id === state.editingId; })) state.editingId = null;
+    var visibleIds = getFiltered().map(function (b) { return b.id; });
+    if (state.editingId !== null && visibleIds.indexOf(state.editingId) === -1) state.editingId = null;
+    // 詳細パネルに出しているブックマークが、削除・絞り込み・検索で見えなくなったら、選択を外す
+    if (state.selectedId !== null && visibleIds.indexOf(state.selectedId) === -1) state.selectedId = null;
     renderTopSites();
     renderTagBar();
     renderList();
+    renderDetail();
     addTagPicker.refresh();
     if (!tagManageOverlay.hidden) renderTagManageModal(); // モーダルが開いている間は常に最新の件数を反映する
 
@@ -1384,9 +1501,10 @@
     return picker;
   }
 
-  // 直近の集計期間に開いた回数が多い順(同数は最後に開いたのが新しい順)に最大 TOP_SITES_MAX 件。記録が無ければ帯ごと隠す。
+  // 直近の集計期間に開いた回数が多い順(同数は最後に開いたのが新しい順)に最大 TOP_SITES_MAX 件。記録が無ければ区画ごと隠す。
   function renderTopSites() {
     var el = document.getElementById('top-sites');
+    var section = document.getElementById('top-sites-section');
     var now = Date.now();
     var sites = bookmarks
       .map(function (b) {
@@ -1397,21 +1515,21 @@
       .sort(function (x, y) { return y.count - x.count || y.last - x.last; })
       .slice(0, TOP_SITES_MAX);
 
-    el.hidden = !sites.length;
-    el.innerHTML = sites.length
-      ? '<span class="top-sites-label">よく開く</span>' + sites.map(function (x) {
-          var b = x.b;
-          return '<a class="top-site" href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" data-card-id="' + escapeHtml(b.id) + '" title="' + escapeHtml(b.title) + '">' +
-            '<span class="top-site-icon">' + resolveIconHtml(b) + '</span>' +
-            '<span class="top-site-title">' + escapeHtml(b.title) + '</span></a>';
-        }).join('')
-      : '';
+    section.hidden = !sites.length;
+    el.innerHTML = sites.map(function (x, i) {
+      var b = x.b;
+      return '<a class="top-site" href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" data-card-id="' + escapeHtml(b.id) + '" title="' + escapeHtml(b.title) + '">' +
+        '<span class="top-site-rank">' + (i + 1) + '</span>' +
+        '<span class="top-site-icon">' + resolveIconHtml(b) + '</span>' +
+        '<span class="top-site-title">' + escapeHtml(b.title) + '</span>' +
+        '<span class="top-site-count" title="直近14日に開いた回数">' + x.count + '</span></a>';
+    }).join('');
   }
 
-  // 行クリック・Enter・チップのどれも、最終的にリンクの click を経由するため、ここで開いた日時を記録する。
-  // 保存だけで render() は呼ばない(開く操作を妨げない。チップは次の描画で更新される)。
+  // タイトルのクリック・Enter・よく開くサイトのどれも、最終的にリンクの click を経由するため、ここで開いた日時を記録する。
+  // 保存だけで render() は呼ばない(開く操作を妨げない。よく開くサイトは次の描画で更新される)。
   document.addEventListener('click', function (e) {
-    var link = e.target.closest('.card-title a, .top-site');
+    var link = e.target.closest('.card-title a, .top-site, .detail-open');
     if (!link) return;
     var id = link.closest('[data-card-id]').getAttribute('data-card-id');
     var b = bookmarks.find(function (x) { return x.id === id; });
@@ -1436,6 +1554,7 @@
     }).join('');
     if (untagged) html += tagTileHtml('タグなし', untagged, state.filterUntagged, 'data-untagged="1"');
     var bar = document.getElementById('tag-bar');
+    document.getElementById('tag-section').hidden = !html;
     bar.innerHTML = html;
     // タグのタイルは、ドラッグで並べ替えられる(「タグなし」は末尾に固定)
     Array.prototype.forEach.call(bar.querySelectorAll('.tag-tile[data-tag]'), function (tile) {
@@ -1493,6 +1612,20 @@
     return getSearchTokens().length === 0;
   }
 
+  // タグごとの区画。区画の順はタグのタイルと同じで、複数のタグが付いた行は各タグの区画に出す。タグなしは最後。
+  // タグで絞り込み中は、そのタグの区画だけになる(表示中の行はすべてそのタグを持つため)。
+  function groupItems(items) {
+    var groups = [];
+    getTags().forEach(function (t) {
+      if (state.filterTag !== null && t.key !== state.filterTag) return;
+      var members = items.filter(function (b) { return hasTag(b.tags, t.name); });
+      if (members.length) groups.push({ key: t.key, name: t.name, items: members });
+    });
+    var untagged = items.filter(function (b) { return b.tags.length === 0; });
+    if (untagged.length) groups.push({ key: '', name: 'タグなし', items: untagged });
+    return groups;
+  }
+
   function renderList() {
     var container = document.getElementById('bookmark-list');
     // render()でDOMを作り直すとフォーカスが失われるため、カード自身にフォーカスがあった場合だけ復元する。
@@ -1504,20 +1637,45 @@
 
     document.getElementById('result-count').textContent =
       items.length + ' 件表示中(全 ' + bookmarks.length + ' 件)' +
-      (reorderable && items.length ? ' — ドラッグで並べ替え' : '');
+      (reorderable && items.length ? (state.viewMode === 'grouped' ? ' — 同じ区画の中でドラッグして並べ替え' : ' — ドラッグで並べ替え') : '');
+
+    Array.prototype.forEach.call(document.querySelectorAll('.view-toggle-btn'), function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-view') === state.viewMode));
+    });
+
+    // 編集フォームは1つだけ(タグごとの表示で同じ行が複数の区画に出ても、最初の1か所にだけ出す)
+    var editShown = false;
+    function rowHtml(b) {
+      if (b.id === state.editingId && !editShown) {
+        editShown = true;
+        return renderEditCard(b);
+      }
+      return renderCard(b, reorderable);
+    }
+    var groups = state.viewMode === 'grouped' ? groupItems(items) : null;
 
     container.innerHTML = items.length
-      ? items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b, reorderable); }).join('')
+      ? (groups
+          ? groups.map(function (g) {
+              return '<section class="tag-group" data-group="' + escapeHtml(g.key) + '">' +
+                '<h3 class="tag-group-head">' + escapeHtml(g.name) + '<span class="tag-group-count">' + g.items.length + '</span></h3>' +
+                g.items.map(rowHtml).join('') + '</section>';
+            }).join('')
+          : items.map(rowHtml).join(''))
       : bookmarks.length
         ? '<div class="search-no-results">条件に一致するブックマークがありません。タグの選択か検索をクリアしてください。</div>'
         : '<div class="search-no-results">ブックマークがありません。「+ 追加」から登録してください。</div>';
 
-    // カード内イベントの割り当て
-    items.forEach(function (b) {
-      var card = container.querySelector('[data-card-id="' + CSS.escape(b.id) + '"]');
-      if (!card) return;
+    // カード内イベントの割り当て(描画された行ごと。タグごとの表示では、同じブックマークの行が複数ある)
+    var byId = Object.create(null);
+    bookmarks.forEach(function (x) { byId[x.id] = x; });
+    Array.prototype.forEach.call(container.querySelectorAll('.card[data-card-id]'), function (card) {
+      var b = byId[card.getAttribute('data-card-id')];
+      if (!b) return;
+      var section = card.closest('.tag-group');
+      var group = section ? section.getAttribute('data-group') : null;
 
-      if (b.id === state.editingId) {
+      if (!card.classList.contains('card--list')) { // 編集フォームのカード
         bindEditCardEvents(card, b);
         return;
       }
@@ -1534,24 +1692,20 @@
           render();
         });
       });
-      var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
-      if (copyIdBtn) copyIdBtn.addEventListener('click', function () { copyToClipboard(b.loginId, copyIdBtn); });
-
-      var copyPwBtn = card.querySelector('[data-action="copy-login-password"]');
-      if (copyPwBtn) copyPwBtn.addEventListener('click', function () { copyToClipboard(b.loginPassword, copyPwBtn); });
-
       var copyPathBtn = card.querySelector('[data-action="copy-path"]');
       if (copyPathBtn) copyPathBtn.addEventListener('click', function () { copyToClipboard(b.url, copyPathBtn); });
 
-      // 行のどこをクリックしても開く（ボタン・リンク・入力欄は各自の動作を優先）
+      // 行の余白をクリックすると詳細を選ぶ(開くのはタイトルの文字。ボタン・リンク・入力欄は各自の動作を優先)
       card.addEventListener('click', function (e) {
-        if (e.target.closest('a, button, input, label, .row-grip, .ind-btn')) return;
-        if (String(window.getSelection()).length) return; // 文字の選択操作(メモのコピー等)では開かない
-        var link = card.querySelector('.card-title a');
-        if (link) link.click();
+        if (e.target.closest('a, button, input, label, .row-grip')) return;
+        if (String(window.getSelection()).length) return; // 文字の選択操作(メモのコピー等)では選ばない
+        state.selectedId = b.id;
+        Array.prototype.forEach.call(container.querySelectorAll('.card[aria-current]'), function (c) { c.removeAttribute('aria-current'); });
+        Array.prototype.forEach.call(container.querySelectorAll('.card[data-card-id="' + CSS.escape(b.id) + '"]'), function (c) { c.setAttribute('aria-current', 'true'); });
+        renderDetail();
       });
 
-      if (reorderable) bindDragEvents(card, b);
+      if (reorderable) bindDragEvents(card, b, group);
     });
 
     var rovingTarget = applyRovingTabindex();
@@ -1575,6 +1729,7 @@
   });
 
   function openTagManageModal() {
+    if (!autoTagOverlay.hidden) return; // 自動タグ付けモーダルと同時には開かない
     tagManageOverlay.hidden = false;
     renderTagManageModal();
     var firstBtn = tagManageList.querySelector('button');
@@ -1585,6 +1740,8 @@
     tagManageOverlay.hidden = true;
     state.editingTag = null; // 閉じたら行内の改名・削除の確認も一緒に閉じておく
     state.confirmDeleteTag = null;
+    state.confirmRename = null;
+    state.renameDraft = null;
     tagManageOpenBtn.focus(); // 開いた場所へフォーカスを戻す
   }
 
@@ -1598,10 +1755,11 @@
   function renderTagManageRow(t) {
     var key = escapeHtml(t.key);
     var name = escapeHtml(t.name);
+    if (state.confirmRename === t.key) return renderRenameConfirmRow(t);
     if (state.editingTag === t.key) {
       return '<li class="tag-manage-row" data-tag="' + key + '">' +
         '<form class="tag-rename-form" data-tag-rename-form data-tag="' + key + '">' +
-          '<input type="text" class="tag-rename-input" name="tagName" value="' + name + '" autocomplete="off">' +
+          '<input type="text" class="tag-rename-input" name="tagName" value="' + (state.renameDraft !== null ? escapeHtml(state.renameDraft) : name) + '" autocomplete="off">' +
           '<button type="submit" class="btn btn-amber">保存</button>' +
           '<button type="button" class="btn-quiet" data-action="cancel-tag-edit">キャンセル</button>' +
         '</form>' +
@@ -1619,6 +1777,25 @@
     '</li>';
   }
 
+  // 改名の影響の確認。改名前のタグ名・新しい名前・影響するブックマークの件数とタイトル(最大5件)・統合になるかを見せる。
+  function renderRenameConfirmRow(t) {
+    var newName = state.renameDraft;
+    var newKey = tagKey(newName);
+    var merged = getTags().filter(function (x) { return x.key === newKey && x.key !== t.key; })[0];
+    var affected = bookmarks.filter(function (b) { return hasTag(b.tags, t.name); });
+    var items = affected.slice(0, 5).map(function (b) { return '<li>' + escapeHtml(b.title) + '</li>'; }).join('') +
+      (affected.length > 5 ? '<li>ほか ' + (affected.length - 5) + ' 件</li>' : '');
+    var key = escapeHtml(t.key);
+    return '<li class="tag-manage-row tag-manage-confirm" data-tag="' + key + '">' +
+      '<span>「' + escapeHtml(t.name) + '」を「' + escapeHtml(newName) + '」に変更します。' + affected.length + ' 件のブックマークが変わります。</span>' +
+      (merged ? '<span class="tag-confirm-merge">「' + escapeHtml(merged.name) + '」は既存のタグです。統合され、1つのタグになります。</span>' : '') +
+      '<ul class="tag-confirm-titles">' + items + '</ul>' +
+      '<div class="tag-confirm-actions">' +
+        '<button type="button" class="btn btn-amber" data-action="apply-rename" data-tag="' + key + '">適用</button>' +
+        '<button type="button" class="btn-quiet" data-action="cancel-rename">キャンセル</button>' +
+      '</div></li>';
+  }
+
   tagManageList.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-action]');
     if (!btn) return;
@@ -1627,12 +1804,23 @@
     if (action === 'edit-tag') {
       state.editingTag = key;
       state.confirmDeleteTag = null;
+      state.confirmRename = null;
+      state.renameDraft = null;
     } else if (action === 'delete-tag') {
       state.confirmDeleteTag = key;
       state.editingTag = null;
+      state.confirmRename = null;
+      state.renameDraft = null;
     } else if (action === 'cancel-tag-edit') {
       state.editingTag = null;
       state.confirmDeleteTag = null;
+      state.confirmRename = null;
+      state.renameDraft = null;
+    } else if (action === 'cancel-rename') {
+      state.confirmRename = null; // 入力に戻る(入力した名前は残す)
+    } else if (action === 'apply-rename') {
+      renameTag(key, state.renameDraft);
+      return;
     } else if (action === 'confirm-delete-tag') {
       deleteTag(key);
       return;
@@ -1646,16 +1834,32 @@
     var form = e.target.closest('[data-tag-rename-form]');
     if (!form) return;
     e.preventDefault();
-    renameTag(form.getAttribute('data-tag'), form.tagName.value);
+    var oldKey = form.getAttribute('data-tag');
+    var newName = form.tagName.value.trim();
+    if (!renameTarget(oldKey, newName)) {
+      renameTag(oldKey, newName); // 何も変えずに入力を閉じる
+      return;
+    }
+    state.renameDraft = newName; // すぐには適用せず、影響を確認する段階へ
+    state.confirmRename = oldKey;
+    renderTagManageModal();
+    tagManageList.querySelector('[data-action="apply-rename"]').focus(); // 再描画で消えた「保存」の代わりに、確認の「適用」へ
   });
 
+  // 改名として実際に変わるなら、改名前のタグ(getTags の要素)を返す。空・元と同じ名前・存在しないタグなら null。
+  function renameTarget(oldKey, newName) {
+    var current = getTags().filter(function (t) { return t.key === oldKey; })[0];
+    return current && newName && newName !== current.name ? current : null;
+  }
+
   // oldKey のタグを newName に改名する。別の既存のタグ(比較で同じもの)の名前なら統合になり、表記は既存のものに合わせる。
-  // 空・元と同じ名前なら何も変えない。
+  // 空・元と同じ名前なら何も変えない。確認の段階は呼び出し側(適用ボタン)で済ませてある。
   function renameTag(oldKey, newName) {
     newName = newName.trim();
     state.editingTag = null;
-    var current = getTags().filter(function (t) { return t.key === oldKey; })[0];
-    if (!newName || !current || newName === current.name) {
+    state.confirmRename = null;
+    state.renameDraft = null;
+    if (!renameTarget(oldKey, newName)) {
       renderTagManageModal();
       return;
     }
@@ -1736,6 +1940,7 @@
   /* ---------- ドラッグ&ドロップ(並べ替え) ---------- */
 
   var draggedCardId = null;
+  var draggedGroup = null; // ドラッグ中の行がある区画のキー(タグごとの表示のとき。通常の並びでは null)
   var draggedTagKey = null;
 
   // id のブックマークに、key のタグを付ける。すでに付いていれば何もしない。
@@ -1759,11 +1964,12 @@
     render();
   }
 
-  function bindDragEvents(card, b) {
+  // group は、タグごとの表示での区画のキー(タグなしは '')。その区画の中だけで並べ替えられる。通常の並びでは null。
+  function bindDragEvents(card, b, group) {
     card.setAttribute('draggable', 'true');
     bindDragReorder(card, b.id, {
-      getDragged: function () { return draggedCardId; },
-      setDragged: function (v) { draggedCardId = v; },
+      getDragged: function () { return draggedGroup === group ? draggedCardId : null; },
+      setDragged: function (v) { draggedCardId = v; draggedGroup = v ? group : null; },
       dropEffect: 'move',
       onDrop: function (draggedId, targetId, after) { moveBookmark(draggedId, targetId, after); }
     });
@@ -1828,29 +2034,59 @@
         }).join('') + '</div>'
       : '';
 
-    var indicatorsHtml = renderCredentialIndicators(b, ' tabindex="-1"');
-
     var pathCopyHtml = (b.scheme === 'file' || b.scheme === 'unc')
       ? '<button type="button" tabindex="-1" class="icon-btn" data-action="copy-path" aria-label="パスをコピー">&#10697;</button>'
       : '';
 
     return (
-      '<article class="card card--list" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1">' +
+      '<article class="card card--list" data-card-id="' + escapeHtml(b.id) + '" tabindex="-1"' + (b.id === state.selectedId ? ' aria-current="true"' : '') + '>' +
         grip +
         '<div class="seal">' + iconHtml + '</div>' +
         '<div class="row-text">' +
-          '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + highlightText(b.title, tokens) + '</a></h3>' +
+          '<div class="row-head">' +
+            '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + highlightText(b.title, tokens) + '</a></h3>' +
+            tagsHtml +
+          '</div>' +
           memoPreviewHtml +
         '</div>' +
-        tagsHtml +
         '<div class="card-footer"><div class="card-actions">' +
-          indicatorsHtml +
           pathCopyHtml +
           '<button type="button" tabindex="-1" class="icon-btn" data-action="edit" aria-label="編集">&#9998;</button>' +
           '<button type="button" tabindex="-1" class="icon-btn" data-action="delete" aria-label="削除">&#10005;</button>' +
         '</div></div>' +
       '</article>'
     );
+  }
+
+  // 選択中のブックマークの詳細。パスワードは伏せ字(桁数は固定)で出し、コピーだけできる。保存は平文。
+  function renderDetail() {
+    var el = document.getElementById('detail');
+    var b = bookmarks.filter(function (x) { return x.id === state.selectedId; })[0];
+    if (!b) {
+      el.innerHTML = '<p class="detail-empty">行の余白を押すと、ここに詳細が出ます。</p>';
+      return;
+    }
+    var tokens = getSearchTokens();
+    var copyBtn = function (action) { return '<button type="button" class="detail-copy" data-action="' + action + '">コピー</button>'; };
+    el.innerHTML =
+      '<div class="detail-head"><div class="seal">' + resolveIconHtml(b) + '</div>' +
+        '<h2 class="detail-title">' + highlightText(b.title, tokens) + '</h2>' +
+        '<button type="button" class="icon-btn detail-edit" data-action="detail-edit" aria-label="編集">&#9998;</button></div>' +
+      '<dl>' +
+        '<div><dt>URL</dt><dd class="mono">' + escapeHtml(b.url) + '</dd></div>' +
+        (b.memo ? '<div><dt>メモ</dt><dd>' + highlightText(b.memo, tokens) + '</dd></div>' : '') +
+        (b.tags.length ? '<div><dt>タグ</dt><dd>' + b.tags.map(escapeHtml).join(' / ') + '</dd></div>' : '') +
+        (b.loginId ? '<div><dt>ログインID</dt><dd class="mono">' + escapeHtml(b.loginId) + copyBtn('copy-login-id') + '</dd></div>' : '') +
+        (b.loginPassword ? '<div><dt>パスワード</dt><dd class="mono">●●●●●●●●' + copyBtn('copy-login-password') + '</dd></div>' : '') +
+        '<div><dt>直近14日に開いた回数</dt><dd>' + recentOpens(b, Date.now()).length + ' 回</dd></div>' +
+      '</dl>' +
+      (b.loginPassword ? '<p class="detail-warn">※ パスワードは平文で保存されます</p>' : '') +
+      '<a class="btn btn-amber detail-open" href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" data-card-id="' + escapeHtml(b.id) + '">開く</a>';
+    el.querySelector('[data-action="detail-edit"]').addEventListener('click', function () { state.editingId = b.id; render(); });
+    var idBtn = el.querySelector('[data-action="copy-login-id"]');
+    if (idBtn) idBtn.addEventListener('click', function () { copyToClipboard(b.loginId, idBtn); });
+    var pwBtn = el.querySelector('[data-action="copy-login-password"]');
+    if (pwBtn) pwBtn.addEventListener('click', function () { copyToClipboard(b.loginPassword, pwBtn); });
   }
 
   function renderEditCard(b) {
@@ -2007,23 +2243,199 @@
     render();
   });
 
-  // タグなしのブックマークのうち、含まれる既存のタグ名があるものに、そのタグをまとめて付ける。タグ名は実行前のタグ一覧で判定する。
-  document.getElementById('auto-tag-btn').addEventListener('click', function () {
-    var plan = [];
+  /* ---------- 自動タグ付け(全件。新しいタグの候補 → 変更案 → 承認した行だけ適用) ---------- */
+
+  var AUTO_TAG_CANDIDATE_MAX = 10;
+  var DOMAIN_SECOND_LEVEL = ['co', 'or', 'ne', 'ac', 'go', 'ed', 'gr', 'com', 'org', 'net'];
+  var autoTagOverlay = document.getElementById('auto-tag-overlay');
+  var autoTagBody = document.getElementById('auto-tag-body');
+  var autoTagBtn = document.getElementById('auto-tag-btn');
+  var autoTag = null; // { step: 1|2, candidates: [{name, ids, on}], plan: [{bookmark, proposed, added, removed, checked}] }
+
+  // ドメインの主要部(github.com → github、portal.example.co.jp → example)。IP アドレスや1語のホスト名は null
+  function domainLabel(domain) {
+    if (!domain || /^[\d.]+$/.test(domain) || domain.indexOf(':') !== -1) return null;
+    var parts = domain.replace(/^www\./, '').split('.');
+    if (parts.length < 2) return null;
+    var i = parts.length - 2;
+    if (i > 0 && parts[parts.length - 1].length === 2 && DOMAIN_SECOND_LEVEL.indexOf(parts[i]) !== -1) i--;
+    return parts[i];
+  }
+
+  // 文字種ごとの連続を語とする: 英数字(英字で始まる)、カタカナ(長音を含む)、漢字。ひらがなは語にしない。
+  // Intl.Segmenter は「ポータル」を「ポー」「タル」に割るため使わない。
+  function splitWords(text) {
+    return text.match(/[A-Za-z][A-Za-z0-9]+|[ァ-ヺー]{2,}|[一-鿿々]{2,}/g) || [];
+  }
+
+  // 新しいタグの候補にする語: ドメインの主要部と、タイトル・メモの語(2文字以上、数字だけは除く)。重複は除く
+  function bookmarkTerms(b) {
+    var seen = Object.create(null);
+    var out = [];
+    function add(w) {
+      var key = w.toLowerCase();
+      if (key.length < 2 || /^\d+$/.test(key) || seen[key]) return;
+      seen[key] = true;
+      out.push({ key: key, name: w });
+    }
+    var label = domainLabel(b.domain);
+    if (label) add(label);
+    splitWords(b.title + ' ' + (b.memo || '')).forEach(add);
+    return out;
+  }
+
+  // 既存のタグ名にない語のうち、2件以上のブックマークに共通し、全件の半分以下に出るものを、多い順に最大 AUTO_TAG_CANDIDATE_MAX 件
+  function suggestNewTags() {
+    var existing = Object.create(null);
+    getTags().forEach(function (t) { existing[t.key] = true; });
+    var map = Object.create(null);
     bookmarks.forEach(function (b) {
-      if (b.tags.length) return;
-      var tags = guessTags(b.title, b.url, b.memo);
-      if (tags.length) plan.push({ bookmark: b, tags: tags });
+      bookmarkTerms(b).forEach(function (t) {
+        if (existing[t.key]) return;
+        if (!map[t.key]) map[t.key] = { name: t.name, ids: [], on: false };
+        map[t.key].ids.push(b.id);
+      });
     });
-    if (plan.length === 0) {
-      alert('自動でタグ付けできるタグなしのブックマークはありません。');
+    return Object.keys(map).map(function (k) { return map[k]; })
+      .filter(function (c) { return c.ids.length >= 2 && c.ids.length * 2 <= bookmarks.length; })
+      .sort(function (a, b) { return b.ids.length - a.ids.length || a.name.localeCompare(b.name); })
+      .slice(0, AUTO_TAG_CANDIDATE_MAX);
+  }
+
+  // 全ブックマークのうち、提案のタグ(既存のタグ名+承認した新タグ)が、いまのタグと違うものの変更案。提案が空のものは対象外
+  function buildAutoTagPlan(newNames) {
+    var plan = [];
+    var names = tagNamesWith(newNames);
+    bookmarks.forEach(function (b) {
+      var proposed = guessTags(b.title, b.url, b.memo, names);
+      if (!proposed.length) return;
+      var added = proposed.filter(function (t) { return !hasTag(b.tags, t); });
+      var removed = b.tags.filter(function (t) { return !hasTag(proposed, t); });
+      if (added.length || removed.length) plan.push({ bookmark: b, proposed: proposed, added: added, removed: removed, checked: false });
+    });
+    return plan;
+  }
+
+  function autoTagCheckedCount() {
+    return autoTag.plan.filter(function (p) { return p.checked; }).length;
+  }
+
+  function renderAutoTag() {
+    var title = document.getElementById('auto-tag-title');
+    var html;
+    if (autoTag.step === 1) {
+      title.textContent = '自動タグ付け(1/2) 新しいタグの候補';
+      html = autoTag.candidates.length
+        ? '<p class="auto-tag-hint">複数のブックマークに共通する語です。作るものを選ぶと、次の変更案で、そのタグも提案します。</p>' +
+          '<div class="auto-tag-list">' + autoTag.candidates.map(function (c, i) {
+            var titles = c.ids.slice(0, 3).map(function (id) {
+              return escapeHtml(bookmarks.filter(function (b) { return b.id === id; })[0].title);
+            }).join('、');
+            return '<label class="auto-tag-row"><input type="checkbox" data-cand="' + i + '"' + (c.on ? ' checked' : '') + '>' +
+              '<span class="auto-tag-main"><span class="auto-tag-name">' + escapeHtml(c.name) + '</span>' +
+              '<span class="auto-tag-meta">' + c.ids.length + ' 件: ' + titles + (c.ids.length > 3 ? ' ほか' : '') + '</span></span></label>';
+          }).join('') + '</div>'
+        : '<p class="auto-tag-empty">新しいタグの候補はありません。</p>';
+      html += '<div class="auto-tag-actions">' +
+        '<button type="button" class="btn-quiet" data-action="auto-cancel">キャンセル</button>' +
+        '<button type="button" class="btn btn-amber" data-action="auto-next">次へ</button></div>';
+    } else {
+      title.textContent = '自動タグ付け(2/2) 変更案';
+      html = autoTag.plan.length
+        ? '<p class="auto-tag-hint">チェックした行だけを変更します。提案のタグで、いまのタグを置き換えます。</p>' +
+          '<div class="auto-tag-toolbar"><button type="button" class="btn-quiet" data-action="auto-all">全選択</button>' +
+          '<button type="button" class="btn-quiet" data-action="auto-none">全解除</button></div>' +
+          '<div class="auto-tag-list">' + autoTag.plan.map(function (p, i) {
+            return '<label class="auto-tag-row"><input type="checkbox" data-plan="' + i + '"' + (p.checked ? ' checked' : '') + '>' +
+              '<span class="auto-tag-main"><span class="auto-tag-name">' + escapeHtml(p.bookmark.title) + '</span>' +
+              '<span class="auto-tag-meta">' + (p.bookmark.tags.length ? escapeHtml(p.bookmark.tags.join('、')) : 'タグなし') + ' → ' + escapeHtml(p.proposed.join('、')) +
+              (p.removed.length ? ' <span class="auto-tag-removed">外れる: ' + escapeHtml(p.removed.join('、')) + '</span>' : '') + '</span></span></label>';
+          }).join('') + '</div>'
+        : '<p class="auto-tag-empty">変更案はありません。</p>';
+      html += '<div class="auto-tag-actions">' +
+        '<button type="button" class="btn-quiet" data-action="auto-back">戻る</button>' +
+        '<button type="button" class="btn-quiet" data-action="auto-cancel">キャンセル</button>' +
+        (autoTag.plan.length ? '<button type="button" class="btn btn-amber" data-action="auto-apply" id="auto-apply-btn"></button>' : '') + '</div>';
+    }
+    autoTagBody.innerHTML = html;
+    updateAutoTagApply();
+  }
+
+  // 再描画でボタンが作り直されるため、押したボタン(無くなっていれば先頭のコントロール)へフォーカスを戻す
+  function renderAutoTagAndFocus(action) {
+    renderAutoTag();
+    var again = autoTagBody.querySelector('[data-action="' + action + '"]') || autoTagBody.querySelector('input, button');
+    if (again) again.focus();
+  }
+
+  function updateAutoTagApply() {
+    var btn = document.getElementById('auto-apply-btn');
+    if (!btn) return;
+    var n = autoTagCheckedCount();
+    btn.textContent = n + ' 件を適用';
+    btn.disabled = n === 0;
+  }
+
+  function closeAutoTag() {
+    autoTagOverlay.hidden = true;
+    autoTag = null;
+    autoTagBtn.focus(); // 開いた場所へフォーカスを戻す
+  }
+
+  autoTagBtn.addEventListener('click', function () {
+    if (!tagManageOverlay.hidden) return; // タグ管理モーダルと同時には開かない
+    autoTag = { step: 1, candidates: suggestNewTags(), plan: [] };
+    autoTagOverlay.hidden = false;
+    renderAutoTag();
+    (autoTagBody.querySelector('input, button') || document.getElementById('auto-tag-close-btn')).focus();
+  });
+  document.getElementById('auto-tag-close-btn').addEventListener('click', closeAutoTag);
+  autoTagOverlay.addEventListener('click', function (e) {
+    if (e.target === autoTagOverlay) closeAutoTag(); // 背景クリックで閉じる
+  });
+
+  autoTagBody.addEventListener('change', function (e) {
+    var cand = e.target.getAttribute('data-cand');
+    var plan = e.target.getAttribute('data-plan');
+    if (cand !== null) autoTag.candidates[+cand].on = e.target.checked;
+    if (plan !== null) {
+      autoTag.plan[+plan].checked = e.target.checked;
+      updateAutoTagApply();
+    }
+  });
+
+  autoTagBody.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    if (action === 'auto-cancel') {
+      closeAutoTag();
       return;
     }
-    var lines = plan.map(function (p) { return p.bookmark.title + ' → ' + p.tags.join('、'); });
-    if (!confirm(plan.length + ' 件を自動でタグ付けします。\n\n' + lines.join('\n') + '\n\nよろしいですか?')) return;
-    plan.forEach(function (p) { p.bookmark.tags = p.tags; });
-    saveData(bookmarks);
-    render();
+    if (action === 'auto-next') {
+      var names = autoTag.candidates.filter(function (c) { return c.on; }).map(function (c) { return c.name; });
+      autoTag.plan = buildAutoTagPlan(names);
+      autoTag.step = 2;
+      renderAutoTagAndFocus(action);
+    } else if (action === 'auto-back') {
+      autoTag.step = 1;
+      renderAutoTagAndFocus(action);
+    } else if (action === 'auto-all' || action === 'auto-none') {
+      autoTag.plan.forEach(function (p) { p.checked = action === 'auto-all'; });
+      renderAutoTagAndFocus(action);
+    } else if (action === 'auto-apply') {
+      var targets = autoTag.plan.filter(function (p) { return p.checked; });
+      if (!targets.length) return;
+      targets.forEach(function (p) {
+        var out = [];
+        p.proposed.forEach(function (t) { addTagTo(out, t); });
+        p.bookmark.tags = out;
+      });
+      unifyTagNames(bookmarks);
+      saveData(bookmarks);
+      closeAutoTag();
+      render();
+    }
   });
 
   /* ---------- 検索・ソート ---------- */
@@ -2141,11 +2553,22 @@
       return;
     }
 
-    // タグ管理モーダルが開いている場合、内側の改名・削除の確認→モーダル本体の順に1段階ずつ閉じる
+    if (!autoTagOverlay.hidden) {
+      closeAutoTag();
+      return;
+    }
+
+    // タグ管理モーダルが開いている場合、内側の改名の確認→改名・削除の確認→モーダル本体の順に1段階ずつ閉じる
     if (!tagManageOverlay.hidden) {
+      if (state.confirmRename !== null) {
+        state.confirmRename = null; // 改名の入力に戻る
+        renderTagManageModal();
+        return;
+      }
       if (state.editingTag !== null || state.confirmDeleteTag !== null) {
         state.editingTag = null;
         state.confirmDeleteTag = null;
+        state.renameDraft = null;
         renderTagManageModal();
         return;
       }
@@ -2230,7 +2653,7 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
 
     if (e.key === 'Escape') {
-      if (e.target === searchInput && state.search && tagManageOverlay.hidden && helpPanel.hidden) {
+      if (e.target === searchInput && state.search && tagManageOverlay.hidden && autoTagOverlay.hidden && helpPanel.hidden) {
         clearSearch();
         return;
       }
@@ -2238,7 +2661,7 @@
       return;
     }
 
-    if (!tagManageOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
+    if (!tagManageOverlay.hidden || !autoTagOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
 
     if (isTextInputElement(e.target)) return;
 
@@ -2253,6 +2676,12 @@
   // キーボード操作でフォーカス中のカードID。render()がDOMを作り直すため、stateではなくここで一時保持する。
   var focusedCardId = null;
 
+  // カードの識別子。タグごとの表示では同じブックマークの行が複数の区画に出るため、ID に区画のキーを添える
+  function cardKey(card) {
+    var section = card.closest('.tag-group');
+    return card.getAttribute('data-card-id') + '\u0001' + (section ? section.getAttribute('data-group') : '');
+  }
+
   // ロービングの対象は tabindex 属性を持つカードのみ。編集フォームに差し替わったカード(renderEditCard)は
   // 属性を持たないため自動的に除外され、フォーム内inputへ自然にTab遷移できる。
   function getNavigableCards() {
@@ -2266,7 +2695,7 @@
     if (!cards.length) return null; // 表示中カードが0件のときはどのカードにもtabindex="0"を置かない
     var target = null;
     if (focusedCardId !== null) {
-      target = cards.filter(function (c) { return c.getAttribute('data-card-id') === focusedCardId; })[0] || null;
+      target = cards.filter(function (c) { return cardKey(c) === focusedCardId; })[0] || null;
     }
     if (!target) target = cards[0];
     cards.forEach(function (c) { c.setAttribute('tabindex', c === target ? '0' : '-1'); });
@@ -2287,7 +2716,7 @@
   document.getElementById('bookmark-list').addEventListener('focusin', function (e) {
     var card = e.target.closest('#bookmark-list .card[tabindex]');
     if (!card) return;
-    focusedCardId = card.getAttribute('data-card-id');
+    focusedCardId = cardKey(card);
     applyRovingTabindex();
   });
 
