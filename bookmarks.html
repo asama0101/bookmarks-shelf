@@ -131,7 +131,7 @@
     letter-spacing: 0.03em;
   }
 
-  /* 一覧の操作ボタン(グループ管理など)用の小さめ・細字のボタン */
+  /* 一覧の操作ボタン(タグ管理など)用の小さめ・細字のボタン */
   .btn-compact {
     padding: 6px 10px;
     font-size: 0.8rem;
@@ -313,13 +313,14 @@
     margin: 0 0 16px;
   }
 
-  /* ---------- グループタイル(見出し+件数)と、開いたときの中身の区画 ---------- */
+  /* ---------- タグバー(タグ名+件数のタイル)と、一覧の区画 ---------- */
 
-  #group-sections {
+  .tag-bar {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: 10px;
     align-items: start;
+    margin-bottom: 14px;
   }
 
   /* ---------- よく開くサイト(直近の利用が多い順のチップ帯) ---------- */
@@ -357,7 +358,7 @@
   .top-site-icon img, .top-site-icon svg { width: 14px; height: 14px; }
   .top-site-title { overflow: hidden; text-overflow: ellipsis; }
 
-  .group-tile {
+  .tag-tile {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -370,91 +371,29 @@
     color: var(--ink);
     cursor: pointer;
   }
-  .group-tile:hover, .group-tile[aria-expanded="true"] { background: rgba(227, 167, 63, 0.16); border-color: var(--amber); }
-  .group-tile:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
-  .group-tile.drag-target { border-style: dashed; border-color: var(--amber); }
-  .group-tile-name {
+  .tag-tile:hover, .tag-tile[aria-pressed="true"] { background: rgba(227, 167, 63, 0.16); border-color: var(--amber); }
+  .tag-tile:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .tag-tile.dragging { opacity: 0.45; }
+  .tag-tile.drop-tag { background: rgba(227, 167, 63, 0.3); border-color: var(--amber); }
+  .tag-tile.drop-before { box-shadow: -3px 0 0 var(--amber); }
+  .tag-tile.drop-after { box-shadow: 3px 0 0 var(--amber); }
+  .tag-tile-name {
     font-family: var(--font-display);
     font-size: 0.9rem;
     overflow-wrap: anywhere;
   }
-  .group-tile-count {
+  .tag-tile-count {
     font-family: var(--font-mono);
     font-size: 0.75rem;
     color: var(--ink-soft);
   }
 
-  .group-section {
-    grid-column: 1 / -1;
+  .list-section {
     background: rgba(27, 53, 56, 0.045);
     border: 1px solid var(--sage);
     border-radius: 10px;
     padding: 12px;
   }
-
-  /* 検索中でないときの区画は、タイルの直下に浮くポップオーバー(グリッドの流れから外れ、他のタイルを動かさない) */
-  #group-sections { position: relative; }
-  .group-popover {
-    position: absolute;
-    z-index: 5;
-    width: min(360px, 100%);
-    overflow: auto;
-    background: var(--card);
-    border-color: var(--amber);
-    box-shadow: 0 8px 22px var(--shadow);
-  }
-  .group-popover.ghost { opacity: 0; pointer-events: none; }
-
-  .group-section-grip {
-    cursor: grab;
-    color: var(--ink-soft);
-    font-size: 0.9rem;
-    line-height: 1;
-    user-select: none;
-  }
-  .group-section-grip:active { cursor: grabbing; }
-
-  .group-order-btn {
-    background: transparent;
-    border: none;
-    color: var(--ink-soft);
-    font-size: 0.7rem;
-    line-height: 1;
-    padding: 2px 3px;
-    border-radius: 4px;
-  }
-  .group-order-btn:hover:not(:disabled) { color: var(--ink); background: rgba(27, 53, 56, 0.08); }
-  .group-order-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-  .group-edit-btn {
-    background: transparent;
-    border: none;
-    color: var(--ink-soft);
-    font-size: 0.85rem;
-    line-height: 1;
-    padding: 2px 4px;
-    border-radius: 4px;
-  }
-  .group-edit-btn:hover { color: var(--ink); background: rgba(27, 53, 56, 0.08); }
-
-  .group-rename-form {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .group-rename-input {
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.05rem;
-    padding: 2px 6px;
-    border: 1px solid var(--sage);
-    border-radius: 4px;
-    min-width: 0;
-    flex: 1 1 auto;
-  }
-  .group-rename-form .btn, .group-rename-form .btn-quiet { padding: 4px 10px; font-size: 0.75rem; }
 
   .modal-overlay {
     position: fixed;
@@ -501,7 +440,13 @@
   }
   .modal-close-btn:hover { color: var(--ink); background: rgba(27, 53, 56, 0.08); }
 
-  .group-manage-list {
+  .tag-manage-hint {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin: 0 0 8px;
+  }
+
+  .tag-manage-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -510,7 +455,7 @@
     gap: 6px;
   }
 
-  .group-manage-row {
+  .tag-manage-row {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -519,11 +464,9 @@
     border-radius: 6px;
     background: rgba(27, 53, 56, 0.03);
   }
-  .group-manage-row.dragging { opacity: 0.5; }
-  .group-manage-row.drop-before { box-shadow: 0 -3px 0 var(--amber); }
-  .group-manage-row.drop-after { box-shadow: 0 3px 0 var(--amber); }
+  .tag-manage-row .btn-quiet, .tag-manage-row .btn-danger { padding: 3px 10px; font-size: 0.75rem; }
 
-  .group-manage-name {
+  .tag-manage-name {
     flex: 1 1 auto;
     font-family: var(--font-display);
     font-weight: 700;
@@ -533,11 +476,35 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .tag-manage-count {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-soft);
+  }
 
-  .group-manage-empty {
+  .tag-manage-empty {
     font-size: 0.85rem;
     color: var(--ink-soft);
   }
+
+  .tag-rename-form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .tag-rename-input {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 2px 6px;
+    border: 1px solid var(--sage);
+    border-radius: 4px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+  .tag-rename-form .btn, .tag-rename-form .btn-quiet { padding: 4px 10px; font-size: 0.75rem; }
 
   .search-no-results {
     grid-column: 1 / -1;
@@ -547,12 +514,6 @@
     padding: 40px 18px;
     text-align: center;
     border-top: 1px solid var(--sage);
-  }
-
-  .group-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
   }
 
   /* ---------- カード ---------- */
@@ -598,7 +559,6 @@
   .card.drop-before { box-shadow: 0 -3px 0 var(--amber), 0 2px 8px var(--shadow); }
   .card.drop-after { box-shadow: 0 3px 0 var(--amber), 0 2px 8px var(--shadow); }
   .card:focus { outline: 3px solid var(--amber); outline-offset: 2px; }
-  .group-section.drag-target { border-color: var(--amber); border-style: dashed; }
 
   .card-body {
     flex: 1;
@@ -646,18 +606,9 @@
     cursor: pointer;
     background: transparent;
   }
-  .chip.group-chip { color: var(--ink); border: 1px solid var(--sage); }
-  .chip.group-chip.active { background: var(--sage); color: var(--ink); }
-  .chip-empty {
-    font-size: 0.78rem;
-    color: var(--ink-soft);
-    margin: 0 0 6px;
-  }
-  .field-explain {
-    font-size: 0.72rem;
-    color: var(--ink-soft);
-    margin: 0 0 6px;
-  }
+  .tag-suggest { max-height: 7.5em; overflow-y: auto; }
+  .chip.tag-chip { color: var(--ink); border: 1px solid var(--sage); }
+  .chip.tag-chip.active { background: var(--sage); color: var(--ink); }
 
   .card-footer {
     display: flex;
@@ -770,7 +721,21 @@
     padding: 0 1px;
   }
 
-  .group-grid--list { display: flex; flex-direction: column; gap: 0; }
+  .list-grid { display: flex; flex-direction: column; gap: 0; }
+
+  .row-tags { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .row-tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--ink);
+    border: 1px solid var(--sage);
+    border-radius: 999px;
+    padding: 0 8px;
+    white-space: nowrap;
+    background: transparent;
+    cursor: pointer;
+  }
+  .row-tag:hover { background: rgba(227, 167, 63, 0.16); border-color: var(--amber); }
 
   /* ---------- 編集フォーム(カード内) ---------- */
 
@@ -806,8 +771,8 @@
   </div>
   <div class="header-actions">
     <button class="btn btn-amber" id="toggle-add-btn" type="button">+ 追加</button>
-    <button class="btn btn-ghost btn-compact" id="group-manage-open-btn" type="button">グループ管理</button>
-    <button class="btn btn-ghost btn-compact" id="auto-group-btn" type="button">未分類を自動分類</button>
+    <button class="btn btn-ghost btn-compact" id="tag-manage-open-btn" type="button">タグ管理</button>
+    <button class="btn btn-ghost btn-compact" id="auto-tag-btn" type="button">タグなしを自動タグ付け</button>
     <button class="btn btn-ghost" id="export-btn" type="button">エクスポート</button>
     <button class="btn btn-ghost" id="import-btn" type="button">インポート</button>
     <button class="btn btn-ghost" id="help-btn" type="button">ヘルプ</button>
@@ -826,10 +791,10 @@
       <input id="new-title" type="text" placeholder="表示タイトル" required>
     </div>
     <div class="field">
-      <label for="new-group-text">グループ</label>
-      <p class="field-explain">グループ＝1つだけ選べる置き場所</p>
-      <div class="chip-list" id="new-group-chips"></div>
-      <input id="new-group-text" type="text" placeholder="新しいグループ名">
+      <label for="new-tag-text">タグ(Enter かカンマで確定)</label>
+      <div class="chip-list" id="new-tag-chips"></div>
+      <input id="new-tag-text" type="text" placeholder="タグを入力" autocomplete="off">
+      <div class="chip-list" id="new-tag-suggest"></div>
     </div>
     <div class="field">
       <button class="btn btn-amber" type="submit">保存</button>
@@ -860,9 +825,8 @@
   <h2>キーボードショートカット</h2>
   <dl class="help-grid">
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
-    <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; グループ管理 &rarr; フォーム &rarr; グループのポップオーバーの順に閉じ、何も無ければフォーカスを外す</dd>
-    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd></dt><dd>グループ間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
-    <dt><kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>同じグループ内でカード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
+    <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; タグ管理 &rarr; フォームの順に閉じ、何も無ければフォーカスを外す</dd>
+    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
     <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
     <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
     <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
@@ -873,23 +837,25 @@
   <main class="main">
     <nav class="top-sites" id="top-sites" aria-label="よく開くサイト" hidden></nav>
     <p class="result-count" id="result-count"></p>
-    <div id="group-sections"></div>
+    <nav class="tag-bar" id="tag-bar" aria-label="タグ"></nav>
+    <section class="list-section"><div class="list-grid" id="bookmark-list"></div></section>
   </main>
 </div>
 
 <footer class="data-controls">
-  <span>bookmark-shelf v1.2.0</span>
+  <span>bookmark-shelf v2.0.0</span>
   <span>データはこの端末のブラウザ内(localStorage)に保存されます。</span>
 </footer>
 
-<div class="modal-overlay" id="group-manage-overlay" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="group-manage-title">
+<div class="modal-overlay" id="tag-manage-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tag-manage-title">
     <div class="modal-header">
-      <h2 id="group-manage-title">グループ管理</h2>
-      <button type="button" class="modal-close-btn" id="group-manage-close-btn" aria-label="閉じる">&times;</button>
+      <h2 id="tag-manage-title">タグ管理</h2>
+      <button type="button" class="modal-close-btn" id="tag-manage-close-btn" aria-label="閉じる">&times;</button>
     </div>
-    <ul class="group-manage-list" id="group-manage-list"></ul>
-    <p class="group-manage-empty" id="group-manage-empty" hidden>グループがありません。ブックマークをグループにまとめると、ここに表示されます。</p>
+    <p class="tag-manage-hint">既存のタグ名に改名すると、2つのタグが統合されます。</p>
+    <ul class="tag-manage-list" id="tag-manage-list"></ul>
+    <p class="tag-manage-empty" id="tag-manage-empty" hidden>タグがありません。ブックマークにタグを付けると、ここに表示されます。</p>
   </div>
 </div>
 
@@ -912,23 +878,24 @@
   'use strict';
 
   var STORAGE_KEY = 'bookmarks_data';
+  var TAG_ORDER_KEY = 'bookmarks_tag_order';
+  var SUGGEST_MAX = 10; // タグ入力で、入力が空のときに出す既存タグの候補の数
   var RECENT_MS = 14 * 24 * 60 * 60 * 1000; // 「よく開く」の集計期間(14日)
   var TOP_SITES_MAX = 10;
-  var UNGROUPED = null; // 未分類(グループ未割り当て)を表す内部値
-
   var state = {
     search: '',
     editingId: null,
-    editingGroup: null,
-    openGroup: null // 開いているグループタイルのキー(未分類は''、無ければnull。保存しない)
+    filterTag: null,        // 絞り込み中のタグのキー(小文字)。無ければnull。保存しない
+    filterUntagged: false,  // 「タグなし」で絞り込み中か。保存しない
+    editingTag: null,       // タグ管理モーダルで改名中のタグのキー
+    confirmDeleteTag: null  // タグ管理モーダルで削除の確認中のタグのキー
   };
 
   /* ---------- データ層 ---------- */
 
-  // 廃止したフィールド(タグ・お気に入り・よく使う)を取り除く。旧形式のデータの読み込み用。
+  // 廃止したフィールド(お気に入り・よく使う)を取り除く。旧形式のデータの読み込み用。
   function stripLegacyFields(list) {
     list.forEach(function (b) {
-      delete b.tags;
       delete b.pinned;
       delete b.favoriteOrder;
       delete b.lastAccessed;
@@ -947,13 +914,17 @@
       var parsed = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(parsed)) return [];
 
-      // 手動並べ替え機能の導入前に保存されたデータには order が無いため、読み込み時の並び順で補完する
+      // 手動並べ替え機能の導入前に保存されたデータには order が無いため、読み込み時の並び順で補完する。ディスクへは次の保存で反映される
       var needsOrderMigration = parsed.some(function (b) { return typeof b.order !== 'number'; });
       if (needsOrderMigration) parsed.forEach(function (b, i) { b.order = i; });
 
-      // グループ並べ替え機能の導入前に保存されたデータには groupOrder が無いため、現在のアルファベット順で補完する
-      var needsGroupOrderMigration = parsed.some(function (b) { return typeof b.groupOrder !== 'number'; });
-      if (needsGroupOrderMigration) assignGroupOrder(parsed);
+      // 旧形式(グループ)のデータは、読み込み時にタグへ変換する(group → [group])。ディスクへは次の保存で反映される
+      parsed.forEach(function (b) {
+        b.tags = normalizeTags(b.tags, b.group);
+        delete b.group;
+        delete b.groupOrder;
+      });
+      unifyTagNames(parsed);
 
       // 廃止したフィールドは読み込み時に捨てる。ディスクへは次の保存で反映される
       stripLegacyFields(parsed);
@@ -962,7 +933,6 @@
       var now = Date.now();
       parsed.forEach(function (b) { if (b.opens) b.opens = recentOpens(b, now); });
 
-      if (needsOrderMigration || needsGroupOrderMigration) localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
       return parsed;
     } catch (e) {
       return [];
@@ -974,6 +944,33 @@
   }
 
   var bookmarks = loadData();
+
+  // タグのタイルの手動の並び(タグのキーの配列)。空なら件数順。ブックマークのデータとは別のキーに持ち、エクスポート/インポートには含める
+  function sanitizeTagOrder(raw) {
+    var out = [];
+    if (Array.isArray(raw)) {
+      raw.forEach(function (t) {
+        if (typeof t !== 'string') return;
+        var k = tagKey(t.trim());
+        if (k && out.indexOf(k) === -1) out.push(k);
+      });
+    }
+    return out;
+  }
+
+  function loadTagOrder() {
+    try {
+      return sanitizeTagOrder(JSON.parse(localStorage.getItem(TAG_ORDER_KEY)));
+    } catch (e) {
+      return [];
+    }
+  }
+
+  var tagOrder = loadTagOrder();
+
+  function saveTagOrder() {
+    localStorage.setItem(TAG_ORDER_KEY, JSON.stringify(tagOrder));
+  }
 
   function makeId() {
     if (window.crypto && typeof window.crypto.randomUUID === 'function') {
@@ -1134,7 +1131,6 @@
     if (!scheme) return null;
 
     var title = typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : deriveTentativeTitle(url, scheme) || url;
-    var group = typeof raw.group === 'string' && raw.group.trim() ? raw.group.trim() : null;
     var loginId = typeof raw.loginId === 'string' && raw.loginId.trim() ? raw.loginId.trim() : null;
     var loginPassword = typeof raw.loginPassword === 'string' && raw.loginPassword ? raw.loginPassword : null;
     var memo = typeof raw.memo === 'string' && raw.memo.trim() ? raw.memo : null;
@@ -1143,9 +1139,7 @@
       id: makeId(),
       url: url,
       title: title,
-      group: group,
-      // order と異なり配列位置から復元できないため、有効な数値なら温存する。欠落時は後段の assignGroupOrder() が補完する。
-      groupOrder: typeof raw.groupOrder === 'number' ? raw.groupOrder : undefined,
+      tags: normalizeTags(raw.tags, raw.group), // 旧形式(group)の要素は、group 名を1つのタグにする
       loginId: loginId,
       loginPassword: loginPassword,
       memo: memo,
@@ -1156,58 +1150,103 @@
     };
   }
 
-  /* ---------- 派生データ(グループ・タグ) ---------- */
+  /* ---------- タグ ---------- */
 
-  // groupOrder が1件でも欠けていれば、現在のグループ名アルファベット順を初期値として全件に採番し直す。
-  // order 移行シムと同様、後方互換のための一度きりの補完。以後は各操作が明示的に維持する。
-  function assignGroupOrder(list) {
-    var names = Array.from(new Set(list.map(function (b) { return b.group; }).filter(Boolean)))
-      .sort(function (a, b) { return a.localeCompare(b); });
-    var indexByName = {};
-    names.forEach(function (name, i) { indexByName[name] = i; });
-    list.forEach(function (b) { b.groupOrder = b.group ? indexByName[b.group] : 0; });
+  function tagKey(t) {
+    return t.toLowerCase();
   }
 
-  // 新規グループ名は末尾(既存最大値+1)に、既存グループ名はそのグループの現在値に合わせる。未分類(falsy)は常に0。
-  function getGroupOrderForName(name) {
-    if (!name) return 0;
-    var existing = bookmarks.find(function (b) { return b.group === name; });
-    if (existing) return existing.groupOrder;
-    var max = -1;
-    bookmarks.forEach(function (b) { if (b.group && b.groupOrder > max) max = b.groupOrder; });
-    return max + 1;
+  function hasTag(list, t) {
+    var k = tagKey(t);
+    return list.some(function (x) { return tagKey(x) === k; });
   }
 
-  function getGroups() {
-    var order = Object.create(null);
-    bookmarks.forEach(function (b) {
-      if (!b.group) return;
-      if (!(b.group in order) || b.groupOrder < order[b.group]) order[b.group] = b.groupOrder;
+  // 前後の空白を除いて空なら追加しない。比較で同じタグ(大文字小文字を区別しない)は重複して追加しない。
+  function addTagTo(list, t) {
+    t = t.trim();
+    if (t && !hasTag(list, t)) list.push(t);
+  }
+
+  // tags が配列なら、文字列だけを整えて返す(group は使わない)。配列でなければ、group(空でない文字列)を1つのタグにする。
+  // 読み込み時の旧形式の変換と、インポートで共用する。
+  function normalizeTags(rawTags, rawGroup) {
+    var out = [];
+    if (Array.isArray(rawTags)) {
+      rawTags.forEach(function (t) { if (typeof t === 'string') addTagTo(out, t); });
+    } else if (typeof rawGroup === 'string') {
+      addTagTo(out, rawGroup);
+    }
+    return out;
+  }
+
+  // 比較で同じタグの表記を、配列の先頭に近い要素で最初に現れたものに揃える
+  function unifyTagNames(list) {
+    var names = Object.create(null);
+    list.forEach(function (b) {
+      b.tags.forEach(function (t) { if (!(tagKey(t) in names)) names[tagKey(t)] = t; });
     });
-    return Object.keys(order).sort(function (a, b) { return order[a] - order[b] || a.localeCompare(b); });
+    list.forEach(function (b) {
+      b.tags = b.tags.map(function (t) { return names[tagKey(t)]; });
+    });
   }
 
-  // 自動分類の行き先。タイトル+URL+メモに含まれるグループ名(最長)→同じdomainの既存ブックマークのグループ(件数最多)の順に探す。
-  // 同点は getGroups() の順(groupOrder が小さいほう)。決まらなければ null(未分類)。memo は null でもよい。
-  function guessGroup(title, url, memo, domain) {
+  // 全ブックマークで数えたタグの一覧。手動の並び(tagOrder)にあるものを先に、残りは件数の多い順(同数は名前順)。検索・絞り込みでは変わらない。
+  function getTags() {
+    var map = Object.create(null);
+    bookmarks.forEach(function (b) {
+      b.tags.forEach(function (t) {
+        var k = tagKey(t);
+        if (!map[k]) map[k] = { key: k, name: t, count: 0 };
+        map[k].count++;
+      });
+    });
+    return Object.keys(map).map(function (k) { return map[k]; }).sort(function (a, b) {
+      var ia = tagOrder.indexOf(a.key);
+      var ib = tagOrder.indexOf(b.key);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return b.count - a.count || a.name.localeCompare(b.name);
+    });
+  }
+
+  // 使われなくなったタグ(削除・編集などで消えたもの)を並びから外す。変わったときだけ保存する
+  function pruneTagOrder() {
+    var used = Object.create(null);
+    bookmarks.forEach(function (b) { b.tags.forEach(function (t) { used[tagKey(t)] = true; }); });
+    var kept = tagOrder.filter(function (k) { return used[k]; });
+    if (kept.length !== tagOrder.length) {
+      tagOrder = kept;
+      saveTagOrder();
+    }
+  }
+
+  function countUntagged() {
+    return bookmarks.filter(function (b) { return b.tags.length === 0; }).length;
+  }
+
+  // 入力したタグ名を、既存のタグがあればその表記に合わせる(同じタグが別の表記で並ばないように)
+  function canonicalTag(name) {
+    var k = tagKey(name.trim());
+    var existing = getTags().filter(function (t) { return t.key === k; })[0];
+    return existing ? existing.name : name.trim();
+  }
+
+  // 自動タグ付けで文章と照らすための名前。絵文字・記号(異体字セレクタ・ZWJ を含む)を除き、空白を1つにする。
+  // 絵文字だけのタグは、除くと空になるので、そのままの名前を使う。
+  var EMOJI_RE = /(?:[\uD83C-\uD83E][\uDC00-\uDFFF]|\uDB40[\uDC00-\uDC7F]|[©®‼⁉™ℹ←-⯿〰〽㊗㊙⃣️‍])/g;
+  function matchKey(name) {
+    var k = tagKey(name).replace(EMOJI_RE, '').replace(/\s+/g, ' ').trim();
+    return k || tagKey(name);
+  }
+
+  // 自動タグ付け。タイトル+URL+メモに含まれる既存のタグ名(大文字小文字・絵文字を区別しない)を、すべて返す。memo は null でもよい。
+  function guessTags(title, url, memo) {
     var text = (title + ' ' + url + ' ' + (memo || '')).toLowerCase();
-    var names = getGroups();
-    var best = null;
-    names.forEach(function (name) {
-      if (text.indexOf(name.toLowerCase()) !== -1 && (best === null || name.length > best.length)) best = name;
-    });
-    if (best !== null || !domain) return best;
-    var counts = Object.create(null);
-    bookmarks.forEach(function (b) {
-      if (b.group && b.domain === domain) counts[b.group] = (counts[b.group] || 0) + 1;
-    });
-    names.forEach(function (name) {
-      if (counts[name] && (best === null || counts[name] > counts[best])) best = name;
-    });
-    return best;
+    return getTags().filter(function (t) { return text.indexOf(matchKey(t.name)) !== -1; }).map(function (t) { return t.name; });
   }
 
-  /* ---------- フィルタ・ソート(表示区画は全グループ+未分類。検索語があればヒット0件の区画を除く) ---------- */
+  /* ---------- フィルタ・ソート(タグの絞り込み + 検索) ---------- */
 
   function sortItems(items) {
     return items.slice().sort(function (a, b) {
@@ -1215,39 +1254,36 @@
     });
   }
 
-  function getSearchFiltered() {
-    var q = state.search.trim().toLowerCase();
+  // 検索欄の語を、空白(全角を含む)区切りの小文字の配列にする
+  function getSearchTokens() {
+    return state.search.toLowerCase().split(/[\s　]+/).filter(Boolean);
+  }
+
+  // タグの絞り込み(単一選択)と検索(すべての語を含む)の AND
+  function getFiltered() {
+    var tokens = getSearchTokens();
     return bookmarks.filter(function (b) {
-      if (q) {
-        var hay = (b.title + ' ' + b.url + ' ' + (b.memo || '')).toLowerCase();
-        if (hay.indexOf(q) === -1) return false;
-      }
-      return true;
+      if (state.filterUntagged && b.tags.length !== 0) return false;
+      if (state.filterTag !== null && !hasTag(b.tags, state.filterTag)) return false;
+      var hay = (b.title + ' ' + b.url + ' ' + (b.memo || '')).toLowerCase();
+      return tokens.every(function (t) { return hay.indexOf(t) !== -1; });
     });
   }
 
   /* ---------- レンダリング ---------- */
 
   function render() {
-    // リネーム中のグループが他の操作で消滅した場合、編集状態を閉じる
-    if (state.editingGroup !== null && getGroups().indexOf(state.editingGroup) === -1) state.editingGroup = null;
-    // 開いているタイルのグループが消滅した場合(削除・移動で空になった等)、開閉状態から外す
-    if (state.openGroup !== null) {
-      var openExists = state.openGroup === '' ? bookmarks.some(function (b) { return !b.group; }) : getGroups().indexOf(state.openGroup) !== -1;
-      if (!openExists) state.openGroup = null;
-    }
-    // 編集中のブックマークのグループが閉じている(検索クリア等で見えなくなった)場合、見えない編集フォームを破棄する
-    if (state.editingId !== null) {
-      var editingBookmark = bookmarks.find(function (b) { return b.id === state.editingId; });
-      if (!editingBookmark || !isGroupOpen(editingBookmark.group)) state.editingId = null;
-    }
-    // 編集フォーム・追加フォームで選択中のグループが消滅した場合も同様に解除する
-    if (editFormSelectedGroup !== null && getGroups().indexOf(editFormSelectedGroup) === -1) editFormSelectedGroup = null;
-    if (addFormSelectedGroup !== null && getGroups().indexOf(addFormSelectedGroup) === -1) addFormSelectedGroup = null;
+    pruneTagOrder();
+    // 絞り込み中のタグが無くなった(改名・削除・統合・編集で消えた)ら、絞り込みを外す
+    if (state.filterTag !== null && !getTags().some(function (t) { return t.key === state.filterTag; })) state.filterTag = null;
+    if (state.filterUntagged && countUntagged() === 0) state.filterUntagged = false;
+    // 編集中のブックマークが、絞り込み・検索で見えなくなった場合、見えない編集フォームを破棄する
+    if (state.editingId !== null && !getFiltered().some(function (b) { return b.id === state.editingId; })) state.editingId = null;
     renderTopSites();
-    renderSections();
-    refreshAddFormChipPickers();
-    if (!groupManageOverlay.hidden) renderGroupManageModal(); // モーダルが開いている間は常に最新の並び・件数を反映する
+    renderTagBar();
+    renderList();
+    addTagPicker.refresh();
+    if (!tagManageOverlay.hidden) renderTagManageModal(); // モーダルが開いている間は常に最新の件数を反映する
 
     syncHeaderHeight();
   }
@@ -1259,81 +1295,93 @@
     if (header) document.documentElement.style.setProperty('--header-h', header.offsetHeight + 'px');
   }
 
-  /* ---------- グループ チップピッカー(共通) ---------- */
+  /* ---------- タグ入力(追加フォーム・編集フォーム共通) ---------- */
 
-  function chipButtonHtml(value, isActive, extraClass) {
-    return '<button type="button" class="chip ' + extraClass + (isActive ? ' active' : '') + '" data-value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</button>';
-  }
+  // chipsEl に選択中のタグ、suggestEl に既存のタグの候補を出す。タグは Enter・半角カンマ・全角カンマ・読点で確定する。
+  // onManual は、ユーザーが手でタグを追加・外したときに呼ばれる(追加フォームの自動タグ付けを止めるため)。
+  function createTagPicker(chipsEl, suggestEl, textEl, onManual) {
+    var picker = { tags: [], showAll: false };
 
-  // グループは単一選択。selectedGroupGetterは現在値を返す関数、onSelectは新しい値(選び直しでの解除=null含む)を受け取る。
-  function renderGroupChipList(containerEl, selectedGroupGetter, onSelect) {
-    var groups = getGroups();
-    var current = selectedGroupGetter();
-    containerEl.innerHTML = groups.length
-      ? groups.map(function (g) { return chipButtonHtml(g, current === g, 'group-chip'); }).join('')
-      : '<p class="chip-empty">グループがまだありません</p>';
-    containerEl.querySelectorAll('button').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var val = btn.getAttribute('data-value');
-        onSelect(current === val ? null : val);
+    function refresh() {
+      chipsEl.innerHTML = picker.tags.map(function (t) {
+        return '<button type="button" class="chip tag-chip active" data-action="remove-tag" data-name="' + escapeHtml(t) + '" aria-label="' + escapeHtml(t) + 'を外す">' + escapeHtml(t) + ' &times;</button>';
+      }).join('');
+      var typed = textEl.value.trim().toLowerCase();
+      var list = getTags().filter(function (t) {
+        return !hasTag(picker.tags, t.name) && (!typed || t.key.indexOf(typed) !== -1);
       });
+      // 入力が空のときは、先頭の SUGGEST_MAX 件だけ出して、残りは「他 N 件を表示」で出す
+      var hidden = 0;
+      if (!typed && !picker.showAll && list.length > SUGGEST_MAX) {
+        hidden = list.length - SUGGEST_MAX;
+        list = list.slice(0, SUGGEST_MAX);
+      }
+      suggestEl.innerHTML = list.map(function (t) {
+        return '<button type="button" class="chip tag-chip" data-action="add-tag" data-name="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + '</button>';
+      }).join('') + (hidden ? '<button type="button" class="chip" data-action="show-all-tags">他 ' + hidden + ' 件を表示</button>' : '');
+    }
+
+    // 追加できたら true(空・重複は追加しない)
+    function add(name) {
+      var before = picker.tags.length;
+      addTagTo(picker.tags, canonicalTag(name));
+      return picker.tags.length !== before;
+    }
+
+    chipsEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-action="remove-tag"]');
+      if (!btn) return;
+      var key = tagKey(btn.getAttribute('data-name'));
+      picker.tags = picker.tags.filter(function (t) { return tagKey(t) !== key; });
+      onManual();
+      refresh();
     });
-  }
 
-  /* ---------- グループ区画の描画(全グループ+未分類。検索語があればヒット0件の区画を除く) ---------- */
+    suggestEl.classList.add('tag-suggest');
+    suggestEl.addEventListener('click', function (e) {
+      if (e.target.closest('[data-action="show-all-tags"]')) {
+        picker.showAll = true;
+        refresh();
+        return;
+      }
+      var btn = e.target.closest('[data-action="add-tag"]');
+      if (!btn) return;
+      add(btn.getAttribute('data-name'));
+      textEl.value = '';
+      onManual();
+      refresh();
+    });
 
-  // 検索中は一致したグループをすべて開いて見せる(開閉の記憶には触れない)。それ以外は state.openGroup(ポップオーバー)に従う。
-  function isGroupOpen(key) {
-    return state.search.trim() !== '' || state.openGroup === (key || '');
-  }
+    textEl.addEventListener('input', function () {
+      var parts = textEl.value.split(/[,，、]/);
+      if (parts.length > 1) {
+        textEl.value = parts.pop();
+        var added = false;
+        parts.forEach(function (p) { if (add(p)) added = true; });
+        if (added) onManual();
+      }
+      refresh();
+    });
 
-  function renderGroupTile(key, count, isOpen) {
-    var name = key === UNGROUPED ? '未分類' : key;
-    return '<button type="button" class="group-tile" data-group="' + escapeHtml(key || '') + '" aria-expanded="' + isOpen + '">' +
-      '<b class="group-tile-name">' + escapeHtml(name) + '</b>' +
-      '<span class="group-tile-count">' + count + '</span>' +
-    '</button>';
-  }
+    textEl.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return; // IME の変換確定の Enter ではタグを確定しない
+      e.preventDefault(); // フォームの保存ではなく、タグの確定にする
+      picker.commit();
+    });
 
-  // ポップオーバーを閉じる。閉じたグループ内の編集フォームは、render() が見えなくなったものとして破棄する。
-  function closePopover() {
-    if (state.openGroup === null) return;
-    state.openGroup = null;
-    render();
-  }
-
-  // 検索中でなければポップオーバーの外側のクリックで閉じる。
-  // render() で押下対象のDOMが差し替わる前に判定する必要があるため、capture 段階で受ける。
-  document.addEventListener('click', function (e) {
-    if (state.openGroup === null || state.search.trim() !== '') return;
-    if (state.editingId !== null) return; // 編集中の入力を、外側クリックで失わない(Escで閉じる)
-    if (e.target.closest('.group-popover, .group-tile')) return;
-    closePopover();
-  }, true);
-
-  // 開いているタイルの直下にポップオーバーを置く。下に収まらず上の方が広いときだけ上向きにし、高さは空きに収めて内部スクロールにする。
-  function placePopover(container) {
-    var pop = container.querySelector('.group-popover');
-    var tile = container.querySelector('.group-tile[aria-expanded="true"]');
-    if (!pop || !tile) return;
-    var maxH = Math.floor(window.innerHeight * 0.6);
-    pop.style.maxHeight = maxH + 'px';
-    var rect = tile.getBoundingClientRect();
-    var below = window.innerHeight - rect.bottom - 12;
-    var above = rect.top - 12;
-    var up = below < Math.min(pop.offsetHeight, 180) && above > below;
-    pop.style.maxHeight = Math.max(120, Math.min(maxH, up ? above : below)) + 'px';
-    pop.style.left = Math.max(0, Math.min(tile.offsetLeft, container.clientWidth - pop.offsetWidth)) + 'px';
-    pop.style.top = (up ? tile.offsetTop - pop.offsetHeight - 4 : tile.offsetTop + tile.offsetHeight + 4) + 'px';
-  }
-
-  window.addEventListener('resize', function () { placePopover(document.getElementById('group-sections')); });
-
-  // カードのドラッグ中、ポップオーバーは見せたままにして、一覧の行へ並べ替えのドロップができるようにする。
-  // 開いているタイルへ寄せると透明になり、下に隠れた全タイルが落とし先になる。
-  function setPopoverGhost(on) {
-    var pop = document.querySelector('#group-sections .group-popover');
-    if (pop) pop.classList.toggle('ghost', on);
+    // 入力欄に残っている未確定の語をタグにする
+    picker.commit = function () {
+      var v = textEl.value.trim();
+      textEl.value = '';
+      if (v && add(v)) onManual();
+      refresh();
+    };
+    picker.set = function (tags) {
+      picker.tags = tags.slice();
+      refresh();
+    };
+    picker.refresh = refresh;
+    return picker;
   }
 
   // 直近の集計期間に開いた回数が多い順(同数は最後に開いたのが新しい順)に最大 TOP_SITES_MAX 件。記録が無ければ帯ごと隠す。
@@ -1373,58 +1421,99 @@
     saveData(bookmarks);
   });
 
-  function renderSections() {
-    var container = document.getElementById('group-sections');
+  function tagTileHtml(name, count, isOn, attr) {
+    return '<button type="button" class="tag-tile" ' + attr + ' aria-pressed="' + isOn + '">' +
+      '<b class="tag-tile-name">' + escapeHtml(name) + '</b>' +
+      '<span class="tag-tile-count">' + count + '</span>' +
+    '</button>';
+  }
+
+  // 全タグ(件数付き)と、末尾の「タグなし」。件数は全ブックマークで数え、検索・絞り込みでは変わらない。
+  function renderTagBar() {
+    var untagged = countUntagged();
+    var html = getTags().map(function (t) {
+      return tagTileHtml(t.name, t.count, state.filterTag === t.key, 'data-tag="' + escapeHtml(t.key) + '"');
+    }).join('');
+    if (untagged) html += tagTileHtml('タグなし', untagged, state.filterUntagged, 'data-untagged="1"');
+    var bar = document.getElementById('tag-bar');
+    bar.innerHTML = html;
+    // タグのタイルは、ドラッグで並べ替えられる(「タグなし」は末尾に固定)
+    Array.prototype.forEach.call(bar.querySelectorAll('.tag-tile[data-tag]'), function (tile) {
+      tile.setAttribute('draggable', 'true');
+      bindDragReorder(tile, tile.getAttribute('data-tag'), {
+        getDragged: function () { return draggedTagKey; },
+        setDragged: function (v) { draggedTagKey = v; },
+        dropEffect: 'move',
+        horizontal: true,
+        onDrop: moveTag
+      });
+      // 行(ブックマーク)をタイルにドロップすると、そのタグを付ける(追加のみ。行のドラッグ中だけ受け付ける)
+      tile.addEventListener('dragover', function (e) {
+        if (!draggedCardId) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        tile.classList.add('drop-tag');
+      });
+      tile.addEventListener('dragleave', function (e) {
+        if (!tile.contains(e.relatedTarget)) tile.classList.remove('drop-tag');
+      });
+      tile.addEventListener('drop', function (e) {
+        if (!draggedCardId) return;
+        e.preventDefault();
+        tile.classList.remove('drop-tag');
+        var id = draggedCardId;
+        draggedCardId = null; // 再描画で行が消え、dragend が届かないため、ここで解除する
+        addTagToBookmark(id, tile.getAttribute('data-tag'));
+      });
+    });
+  }
+
+  // タイルは単一選択: 押したタグだけに絞る。別のタイルで切り替わり、同じタイルをもう一度押すと外れる。
+  document.getElementById('tag-bar').addEventListener('click', function (e) {
+    var tile = e.target.closest('.tag-tile');
+    if (!tile) return;
+    var isUntagged = tile.hasAttribute('data-untagged');
+    var key = tile.getAttribute('data-tag');
+    var wasOn = isUntagged ? state.filterUntagged : state.filterTag === key;
+    state.filterTag = null;
+    state.filterUntagged = false;
+    if (!wasOn) {
+      if (isUntagged) state.filterUntagged = true; else state.filterTag = key;
+    }
+    render();
+    // 再描画でタイルが作り直されるため、押したタイルへフォーカスを戻す
+    var again = Array.prototype.filter.call(document.querySelectorAll('#tag-bar .tag-tile'), function (t) {
+      return isUntagged ? t.hasAttribute('data-untagged') : t.getAttribute('data-tag') === key;
+    })[0];
+    if (again) again.focus();
+  });
+
+  // カードのドラッグ並べ替えは、検索中でないときだけ有効にする(タグの絞り込み中は有効)
+  function canReorder() {
+    return getSearchTokens().length === 0;
+  }
+
+  function renderList() {
+    var container = document.getElementById('bookmark-list');
     // render()でDOMを作り直すとフォーカスが失われるため、カード自身にフォーカスがあった場合だけ復元する。
     // カード内のボタンにフォーカスがある場合(編集ボタンのクリック等)は、その後の遷移を妨げないよう復元しない。
     var active = document.activeElement;
     var hadCardFocus = !!(active && active.classList && active.classList.contains('card') && container.contains(active));
-    var filtered = getSearchFiltered();
-    var searching = state.search.trim() !== '';
-    var groupNames = getGroups(); // 名前付きグループ(groupOrder順・グループ管理モーダルで並べ替え可能) + 最後に未分類
-    // タイルは、表示対象(検索語があれば一致分)のブックマークを持つグループだけ出す。未分類も該当があるときだけ。
-    var sectionKeys = groupNames.concat([UNGROUPED]).filter(function (key) {
-      return filtered.some(function (b) { return (b.group || null) === key; });
-    });
+    var items = sortItems(getFiltered());
+    var reorderable = canReorder();
 
     document.getElementById('result-count').textContent =
-      filtered.length + ' 件表示中(全 ' + bookmarks.length + ' 件)' +
-      (sectionKeys.length ? ' — ドラッグで並べ替え。開いているタイルへ寄せると一覧が透明になり、下のタイルへ移動できます' : '');
+      items.length + ' 件表示中(全 ' + bookmarks.length + ' 件)' +
+      (reorderable && items.length ? ' — ドラッグで並べ替え' : '');
 
-    container.innerHTML = sectionKeys.length
-      ? sectionKeys.map(function (key) {
-          var items = sortItems(filtered.filter(function (b) { return (b.group || null) === key; }));
-          var isOpen = isGroupOpen(key);
-          var section = isOpen
-            ? '<section class="group-section' + (searching ? '' : ' group-popover') + '" data-group="' + escapeHtml(key || '') + '">' +
-                '<div class="group-grid group-grid--list" data-group-grid="' + escapeHtml(key || '') + '">' +
-                  items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b); }).join('') +
-                '</div>' +
-              '</section>'
-            : '';
-          return renderGroupTile(key, items.length, isOpen) + section;
-        }).join('')
+    container.innerHTML = items.length
+      ? items.map(function (b) { return b.id === state.editingId ? renderEditCard(b) : renderCard(b, reorderable); }).join('')
       : bookmarks.length
-        ? '<div class="search-no-results">検索条件に一致するブックマークがありません。検索をクリアしてください。</div>'
+        ? '<div class="search-no-results">条件に一致するブックマークがありません。タグの選択か検索をクリアしてください。</div>'
         : '<div class="search-no-results">ブックマークがありません。「+ 追加」から登録してください。</div>';
 
-    container.querySelectorAll('.group-tile').forEach(function (tile) {
-      tile.addEventListener('click', function () {
-        if (searching) return; // 検索中は一致グループが自動で開いているので、開閉は受け付けない
-        var groupKey = tile.getAttribute('data-group');
-        state.openGroup = state.openGroup === groupKey ? null : groupKey; // 閉じたグループ内の編集フォームは render() が破棄する
-        render();
-        var again = container.querySelector('.group-tile[data-group="' + CSS.escape(groupKey) + '"]');
-        if (again) again.focus();
-      });
-    });
-
-    placePopover(container);
-    bindGroupSectionDragEvents(container);
-    bindGroupTileDropEvents(container);
-
     // カード内イベントの割り当て
-    bookmarks.forEach(function (b) {
+    items.forEach(function (b) {
       var card = container.querySelector('[data-card-id="' + CSS.escape(b.id) + '"]');
       if (!card) return;
 
@@ -1437,6 +1526,14 @@
       var delBtn = card.querySelector('[data-action="delete"]');
       if (editBtn) editBtn.addEventListener('click', function () { state.editingId = b.id; render(); });
       if (delBtn) delBtn.addEventListener('click', function () { handleDelete(b.id); });
+      // 行のタグを押すと、そのタグで絞り込む(タイルを押したときと同じ状態にする)
+      Array.prototype.forEach.call(card.querySelectorAll('[data-action="filter-tag"]'), function (chip) {
+        chip.addEventListener('click', function () {
+          state.filterTag = chip.getAttribute('data-tag');
+          state.filterUntagged = false;
+          render();
+        });
+      });
       var copyIdBtn = card.querySelector('[data-action="copy-login-id"]');
       if (copyIdBtn) copyIdBtn.addEventListener('click', function () { copyToClipboard(b.loginId, copyIdBtn); });
 
@@ -1454,7 +1551,7 @@
         if (link) link.click();
       });
 
-      bindDragEvents(card, b);
+      if (reorderable) bindDragEvents(card, b);
     });
 
     var rovingTarget = applyRovingTabindex();
@@ -1464,156 +1561,142 @@
     if (hadCardFocus && rovingTarget && state.editingId === null) rovingTarget.focus();
   }
 
-  // タイルへのドロップ: 閉じたままのグループへも、カードをそのグループの末尾へ移動できる
-  function bindGroupTileDropEvents(container) {
-    container.querySelectorAll('.group-tile').forEach(function (tile) {
-      var groupValue = tile.getAttribute('data-group') || null;
-      tile.addEventListener('dragover', function (e) {
-        if (!draggedCardId) return; // グループ管理モーダルの行ドラッグ等では受け付けない
-        e.preventDefault();
-        tile.classList.add('drag-target');
-      });
-      tile.addEventListener('dragleave', function () { tile.classList.remove('drag-target'); });
-      tile.addEventListener('drop', function (e) {
-        if (!draggedCardId) return;
-        e.preventDefault();
-        tile.classList.remove('drag-target');
-        var draggedId = e.dataTransfer.getData('text/plain');
-        draggedCardId = null; // render()でドラッグ元カードがDOMから消えdragendが発火しない場合に備え、確定的にクリアする
-        moveToGroupEnd(draggedId, groupValue);
-      });
-    });
-  }
+  /* ---------- タグ管理モーダル ---------- */
 
-  // グループ区画自体へのドロップ: 空欄部分にドロップされたカードをそのグループの末尾へ移動する
-  function bindGroupSectionDragEvents(container) {
-    container.querySelectorAll('.group-section').forEach(function (section) {
-      var groupValue = section.getAttribute('data-group') || null;
-      section.addEventListener('dragover', function (e) {
-        if (!draggedCardId) return; // お気に入りカードのドラッグ中はdraggedCardIdが立たないため、無視して実データ破壊を防ぐ
-        e.preventDefault();
-        section.classList.add('drag-target');
-      });
-      section.addEventListener('dragleave', function (e) {
-        if (e.target === section) section.classList.remove('drag-target');
-      });
-      section.addEventListener('drop', function (e) {
-        if (!draggedCardId) return; // 同上: お気に入りカードのドロップはここでは処理しない
-        e.preventDefault();
-        section.classList.remove('drag-target');
-        var draggedId = e.dataTransfer.getData('text/plain');
-        draggedCardId = null; // render()でドラッグ元カードがDOMから消えdragendが発火しない場合に備え、確定的にクリアする
-        moveToGroupEnd(draggedId, groupValue);
-      });
-    });
-  }
+  var tagManageOverlay = document.getElementById('tag-manage-overlay');
+  var tagManageList = document.getElementById('tag-manage-list');
+  var tagManageEmpty = document.getElementById('tag-manage-empty');
 
-  /* ---------- グループ管理モーダル ---------- */
-
-  var groupManageOverlay = document.getElementById('group-manage-overlay');
-  var groupManageList = document.getElementById('group-manage-list');
-  var groupManageEmpty = document.getElementById('group-manage-empty');
-  // モーダル内リストの並べ替えドラッグ元。カードのドラッグとはDOM上重ならないため、専用のローカル変数で足りる。
-  var manageDraggedGroup = null;
-
-  var groupManageOpenBtn = document.getElementById('group-manage-open-btn');
-  groupManageOpenBtn.addEventListener('click', openGroupManageModal);
-  document.getElementById('group-manage-close-btn').addEventListener('click', closeGroupManageModal);
-  groupManageOverlay.addEventListener('click', function (e) {
-    if (e.target === groupManageOverlay) closeGroupManageModal(); // 背景クリックで閉じる
+  var tagManageOpenBtn = document.getElementById('tag-manage-open-btn');
+  tagManageOpenBtn.addEventListener('click', openTagManageModal);
+  document.getElementById('tag-manage-close-btn').addEventListener('click', closeTagManageModal);
+  tagManageOverlay.addEventListener('click', function (e) {
+    if (e.target === tagManageOverlay) closeTagManageModal(); // 背景クリックで閉じる
   });
 
-  function openGroupManageModal() {
-    groupManageOverlay.hidden = false;
-    renderGroupManageModal();
-    var firstRow = groupManageList.querySelector('.group-manage-row[draggable="true"]');
-    (firstRow || document.getElementById('group-manage-close-btn')).focus();
+  function openTagManageModal() {
+    tagManageOverlay.hidden = false;
+    renderTagManageModal();
+    var firstBtn = tagManageList.querySelector('button');
+    (firstBtn || document.getElementById('tag-manage-close-btn')).focus();
   }
 
-  function closeGroupManageModal() {
-    groupManageOverlay.hidden = true;
-    state.editingGroup = null; // 閉じたら行内のリネームフォームも一緒に閉じておく
-    groupManageOpenBtn.focus(); // 開いた場所へフォーカスを戻す
+  function closeTagManageModal() {
+    tagManageOverlay.hidden = true;
+    state.editingTag = null; // 閉じたら行内の改名・削除の確認も一緒に閉じておく
+    state.confirmDeleteTag = null;
+    tagManageOpenBtn.focus(); // 開いた場所へフォーカスを戻す
   }
 
-  // グループ管理モーダルのリスト全体を再描画する。render()から、モーダルが開いている間だけ呼ばれる。
-  function renderGroupManageModal() {
-    var names = getGroups();
-    groupManageEmpty.hidden = names.length !== 0;
-    groupManageList.innerHTML = names.map(function (name, i) {
-      return renderGroupManageRow(name, i, names.length);
-    }).join('');
-    bindGroupManageRowButtons();
-    bindGroupManageRowDragEvents();
+  // タグ管理モーダルのリスト全体を再描画する。render()から、モーダルが開いている間だけ呼ばれる。
+  function renderTagManageModal() {
+    var tags = getTags();
+    tagManageEmpty.hidden = tags.length !== 0;
+    tagManageList.innerHTML = tags.map(renderTagManageRow).join('');
   }
 
-  function renderGroupManageRow(name, idx, total) {
-    if (state.editingGroup === name) {
-      return '<li class="group-manage-row" data-group="' + escapeHtml(name) + '">' +
-        '<form class="group-rename-form" data-group-rename-form data-group="' + escapeHtml(name) + '">' +
-          '<input type="text" class="group-rename-input" name="groupName" value="' + escapeHtml(name) + '" required>' +
+  function renderTagManageRow(t) {
+    var key = escapeHtml(t.key);
+    var name = escapeHtml(t.name);
+    if (state.editingTag === t.key) {
+      return '<li class="tag-manage-row" data-tag="' + key + '">' +
+        '<form class="tag-rename-form" data-tag-rename-form data-tag="' + key + '">' +
+          '<input type="text" class="tag-rename-input" name="tagName" value="' + name + '" autocomplete="off">' +
           '<button type="submit" class="btn btn-amber">保存</button>' +
-          '<button type="button" class="btn-quiet" data-action="cancel-group-rename">キャンセル</button>' +
+          '<button type="button" class="btn-quiet" data-action="cancel-tag-edit">キャンセル</button>' +
         '</form>' +
       '</li>';
     }
-    return '<li class="group-manage-row" draggable="true" tabindex="-1" data-group="' + escapeHtml(name) + '">' +
-      '<span class="group-section-grip" aria-hidden="true">&#10021;</span>' +
-      '<button type="button" class="group-order-btn" data-action="move-group-up" data-group="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を上へ移動"' + (idx === 0 ? ' disabled' : '') + '>&#9650;</button>' +
-      '<button type="button" class="group-order-btn" data-action="move-group-down" data-group="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'を下へ移動"' + (idx === total - 1 ? ' disabled' : '') + '>&#9660;</button>' +
-      '<span class="group-manage-name">' + escapeHtml(name) + '</span>' +
-      '<button type="button" class="group-edit-btn" data-action="edit-group" data-group="' + escapeHtml(name) + '" aria-label="' + escapeHtml(name) + 'の名前を変更">&#9998;</button>' +
+    var buttons = state.confirmDeleteTag === t.key
+      ? '<button type="button" class="btn-danger" data-action="confirm-delete-tag" data-tag="' + key + '">削除する</button>' +
+        '<button type="button" class="btn-quiet" data-action="cancel-tag-edit">キャンセル</button>'
+      : '<button type="button" class="btn-quiet" data-action="edit-tag" data-tag="' + key + '" aria-label="' + name + 'の名前を変更">改名</button>' +
+        '<button type="button" class="btn-danger" data-action="delete-tag" data-tag="' + key + '" aria-label="' + name + 'を削除">削除</button>';
+    return '<li class="tag-manage-row" data-tag="' + key + '">' +
+      '<span class="tag-manage-name">' + name + '</span>' +
+      '<span class="tag-manage-count">' + t.count + '</span>' +
+      buttons +
     '</li>';
   }
 
-  // 行の上下ボタン・鉛筆(リネーム開始)・リネームフォームのsubmit/キャンセルを割り当てる
-  function bindGroupManageRowButtons() {
-    groupManageList.querySelectorAll('[data-action="move-group-up"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { moveGroupStep(btn.getAttribute('data-group'), -1); });
+  tagManageList.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.getAttribute('data-action');
+    var key = btn.getAttribute('data-tag');
+    if (action === 'edit-tag') {
+      state.editingTag = key;
+      state.confirmDeleteTag = null;
+    } else if (action === 'delete-tag') {
+      state.confirmDeleteTag = key;
+      state.editingTag = null;
+    } else if (action === 'cancel-tag-edit') {
+      state.editingTag = null;
+      state.confirmDeleteTag = null;
+    } else if (action === 'confirm-delete-tag') {
+      deleteTag(key);
+      return;
+    } else {
+      return;
+    }
+    renderTagManageModal();
+  });
+
+  tagManageList.addEventListener('submit', function (e) {
+    var form = e.target.closest('[data-tag-rename-form]');
+    if (!form) return;
+    e.preventDefault();
+    renameTag(form.getAttribute('data-tag'), form.tagName.value);
+  });
+
+  // oldKey のタグを newName に改名する。別の既存のタグ(比較で同じもの)の名前なら統合になり、表記は既存のものに合わせる。
+  // 空・元と同じ名前なら何も変えない。
+  function renameTag(oldKey, newName) {
+    newName = newName.trim();
+    state.editingTag = null;
+    var current = getTags().filter(function (t) { return t.key === oldKey; })[0];
+    if (!newName || !current || newName === current.name) {
+      renderTagManageModal();
+      return;
+    }
+    var newKey = tagKey(newName);
+    var merged = getTags().filter(function (t) { return t.key === newKey && t.key !== oldKey; })[0];
+    var finalName = merged ? merged.name : newName;
+    bookmarks.forEach(function (b) {
+      var out = [];
+      b.tags.forEach(function (t) { addTagTo(out, tagKey(t) === oldKey ? finalName : t); });
+      b.tags = out;
     });
-    groupManageList.querySelectorAll('[data-action="move-group-down"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { moveGroupStep(btn.getAttribute('data-group'), 1); });
-    });
-    groupManageList.querySelectorAll('[data-action="edit-group"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { state.editingGroup = btn.getAttribute('data-group'); renderGroupManageModal(); });
-    });
-    groupManageList.querySelectorAll('[data-action="cancel-group-rename"]').forEach(function (btn) {
-      btn.addEventListener('click', function () { state.editingGroup = null; renderGroupManageModal(); });
-    });
-    groupManageList.querySelectorAll('[data-group-rename-form]').forEach(function (form) {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var oldName = form.getAttribute('data-group');
-        var newName = form.groupName.value.trim();
-        if (newName && newName !== oldName) {
-          var mergeTargetOrder = bookmarks.some(function (b) { return b.group === newName; }) ? getGroupOrderForName(newName) : null;
-          bookmarks.forEach(function (b) {
-            if (b.group === oldName) {
-              b.group = newName;
-              if (mergeTargetOrder !== null) b.groupOrder = mergeTargetOrder;
-            }
-          });
-          saveData(bookmarks);
-          if (state.openGroup === oldName) state.openGroup = newName; // 開いたまま引き継ぐ
-        }
-        state.editingGroup = null;
-        render(); // タイルの見出しも変わるため、モーダルだけでなく全体を再描画する
-      });
-    });
+    if (state.filterTag === oldKey) state.filterTag = newKey; // 絞り込みは新しい名前へ引き継ぐ
+    tagOrder = sanitizeTagOrder(tagOrder.map(function (k) { return k === oldKey ? newKey : k; })); // 並びは新しい名前へ引き継ぐ(統合で重なったら先の位置)
+    saveTagOrder();
+    var formTags = [];
+    addTagPicker.tags.forEach(function (t) { addTagTo(formTags, tagKey(t) === oldKey ? finalName : t); });
+    addTagPicker.tags = formTags;
+    saveData(bookmarks);
+    render();
   }
 
-  // 行の掴みドラッグによる並べ替えを割り当てる
-  // ドラッグ&ドロップによる並べ替えの共通処理(カードの並べ替え・グループ管理モーダルの行並べ替えで共用)。
+  function deleteTag(key) {
+    state.confirmDeleteTag = null;
+    bookmarks.forEach(function (b) {
+      b.tags = b.tags.filter(function (t) { return tagKey(t) !== key; });
+    });
+    addTagPicker.tags = addTagPicker.tags.filter(function (t) { return tagKey(t) !== key; });
+    saveData(bookmarks);
+    render(); // 絞り込み中のタグが消えていれば、render() が絞り込みを外す
+  }
+
+  // ドラッグ&ドロップによる並べ替えの共通処理。
   // el: ドラッグ対象要素, key: elの識別子, opts:
   //   getDragged/setDragged: ドラッグ中の識別子を保持するアクセサ(呼び出し元のモジュール変数を橋渡しする)
-  //   payload: dataTransferへ書き込む文字列(省略時はkeyそのもの。URL状の値になり得る場合は固定文字列を渡す)
-  //   stopPropagation: 親要素の別のドロップハンドラと二重処理させたくない場合はtrue
   //   dropEffect: dragover時にdataTransfer.dropEffectへ設定する値(省略可)
   //   onDrop(draggedKey, key, after): ドロップ確定時に呼ばれる並べ替え処理
+  //   horizontal: true なら、前後を要素の左右の半分で判定する(省略時は上下。折り返して並ぶタイル用)
   function bindDragReorder(el, key, opts) {
     el.addEventListener('dragstart', function (e) {
       opts.setDragged(key);
-      e.dataTransfer.setData('text/plain', opts.payload !== undefined ? opts.payload : key);
+      e.dataTransfer.setData('text/plain', key);
       e.dataTransfer.effectAllowed = 'move';
       el.classList.add('dragging');
     });
@@ -1624,14 +1707,13 @@
     el.addEventListener('dragover', function (e) {
       if (!opts.getDragged()) return;
       e.preventDefault();
-      if (opts.stopPropagation) e.stopPropagation(); // 自己ホバー時も親のドロップハンドラへ伝播させない
       if (opts.getDragged() === key) {
         el.classList.remove('drop-before', 'drop-after'); // 自分自身の上では位置インジケータを出さない
         return;
       }
       if (opts.dropEffect) e.dataTransfer.dropEffect = opts.dropEffect;
       var rect = el.getBoundingClientRect();
-      var after = (e.clientY - rect.top) > rect.height / 2;
+      var after = opts.horizontal ? (e.clientX - rect.left) > rect.width / 2 : (e.clientY - rect.top) > rect.height / 2;
       el.classList.toggle('drop-after', after);
       el.classList.toggle('drop-before', !after);
     });
@@ -1641,83 +1723,59 @@
     });
     el.addEventListener('drop', function (e) {
       e.preventDefault();
-      if (opts.stopPropagation) e.stopPropagation();
       el.classList.remove('drop-before', 'drop-after');
       var draggedKey = opts.getDragged();
       opts.setDragged(null);
       if (!draggedKey || draggedKey === key) return;
       var rect = el.getBoundingClientRect();
-      var after = (e.clientY - rect.top) > rect.height / 2;
+      var after = opts.horizontal ? (e.clientX - rect.left) > rect.width / 2 : (e.clientY - rect.top) > rect.height / 2;
       opts.onDrop(draggedKey, key, after);
     });
   }
 
-  function bindGroupManageRowDragEvents() {
-    groupManageList.querySelectorAll('.group-manage-row[draggable="true"]').forEach(function (row) {
-      bindDragReorder(row, row.getAttribute('data-group'), {
-        getDragged: function () { return manageDraggedGroup; },
-        setDragged: function (v) { manageDraggedGroup = v; },
-        payload: 'group', // 値自体は未使用(dropはmanageDraggedGroupを参照)。URL状のグループ名がドロップ失敗時に誤ナビゲーションを起こさないよう固定文字列にする
-        onDrop: function (draggedKey, targetKey, after) {
-          moveGroupSection(draggedKey, targetKey, after); // render()経由でrenderGroupManageModal()も再描画される
-        }
-      });
-    });
-  }
-
-  /* ---------- ドラッグ&ドロップ(並べ替え・グループ間移動) ---------- */
+  /* ---------- ドラッグ&ドロップ(並べ替え) ---------- */
 
   var draggedCardId = null;
+  var draggedTagKey = null;
 
-  (function bindPopoverGhostEvents() {
-    var container = document.getElementById('group-sections');
-    // 狙いがシビアにならないよう、判定には余白を持たせる。
-    // 透明にする: 開いているタイルの左右・上の余白まで(下はポップオーバーの行に当たるので広げない)。
-    // 戻す: 透明のポップオーバーは当たり判定が無いので、ポップオーバーの範囲から余白を超えて外へ出たとき。
-    //       範囲の中にあるタイルの隙間では戻さない(隠れたタイルへ向かう途中で、再び覆わないように)。
-    var TRIGGER_MARGIN = 16;
-    var RELEASE_MARGIN = 24;
-    function pointInRect(e, r, left, right, top, bottom) {
-      return e.clientX >= r.left - left && e.clientX <= r.right + right && e.clientY >= r.top - top && e.clientY <= r.bottom + bottom;
-    }
-    container.addEventListener('dragover', function (e) {
-      if (!draggedCardId) return;
-      var pop = container.querySelector('.group-popover');
-      var tile = container.querySelector('.group-tile[aria-expanded="true"]');
-      if (!pop || !tile || e.target.closest('.group-popover')) return;
-      if (e.target.closest('.group-tile[aria-expanded="true"]') ||
-          pointInRect(e, tile.getBoundingClientRect(), TRIGGER_MARGIN, TRIGGER_MARGIN, TRIGGER_MARGIN, 0)) {
-        setPopoverGhost(true);
-        return;
-      }
-      if (!pointInRect(e, pop.getBoundingClientRect(), RELEASE_MARGIN, RELEASE_MARGIN, RELEASE_MARGIN, RELEASE_MARGIN)) setPopoverGhost(false);
-    });
-    // カード側が drop を止めても確実に戻せるよう capture で受ける。render() で DOM が替わらない場合の取り残し対策
-    container.addEventListener('drop', function () { setPopoverGhost(false); }, true);
-    container.addEventListener('dragend', function () { setPopoverGhost(false); }, true);
-  })();
+  // id のブックマークに、key のタグを付ける。すでに付いていれば何もしない。
+  function addTagToBookmark(id, key) {
+    var b = bookmarks.filter(function (x) { return x.id === id; })[0];
+    var tag = getTags().filter(function (t) { return t.key === key; })[0];
+    if (!b || !tag || hasTag(b.tags, tag.name)) return;
+    addTagTo(b.tags, tag.name);
+    saveData(bookmarks);
+    render();
+  }
+
+  // targetKey のタグの直前(after=false)または直後(after=true)に draggedKey のタグを移動する。いまの表示順を、そのまま手動の並びにする。
+  function moveTag(draggedKey, targetKey, after) {
+    var keys = getTags().map(function (t) { return t.key; });
+    if (draggedKey === targetKey || keys.indexOf(draggedKey) === -1 || keys.indexOf(targetKey) === -1) return;
+    keys.splice(keys.indexOf(draggedKey), 1);
+    keys.splice(keys.indexOf(targetKey) + (after ? 1 : 0), 0, draggedKey);
+    tagOrder = keys;
+    saveTagOrder();
+    render();
+  }
 
   function bindDragEvents(card, b) {
     card.setAttribute('draggable', 'true');
     bindDragReorder(card, b.id, {
       getDragged: function () { return draggedCardId; },
       setDragged: function (v) { draggedCardId = v; },
-      stopPropagation: true, // グループ区画側のドロップと二重処理にならないようにする
       dropEffect: 'move',
       onDrop: function (draggedId, targetId, after) { moveBookmark(draggedId, targetId, after); }
     });
   }
 
   // targetId の直前(after=false)または直後(after=true)に draggedId のブックマークを移動する。
-  // targetId が別グループに属する場合、draggedId のグループも targetId に合わせて変更する。
+  // タグの絞り込み中は表示が一部なので、全体の並びでは移動先の隣に入れる。表示中の相対順は、ドロップした位置のとおりになる。
   function moveBookmark(draggedId, targetId, after) {
     if (!draggedId || draggedId === targetId) return;
     var dragged = bookmarks.find(function (x) { return x.id === draggedId; });
     var target = bookmarks.find(function (x) { return x.id === targetId; });
     if (!dragged || !target) return;
-
-    dragged.group = target.group;
-    dragged.groupOrder = target.groupOrder;
 
     bookmarks.splice(bookmarks.indexOf(dragged), 1);
     var toIdx = bookmarks.indexOf(target);
@@ -1728,68 +1786,46 @@
     render();
   }
 
-  // グループ区画の空欄にドロップされた場合、そのグループの末尾に移動する
-  function moveToGroupEnd(draggedId, groupValue) {
-    if (!draggedId) return;
-    var idx = bookmarks.findIndex(function (x) { return x.id === draggedId; });
-    if (idx === -1) return;
-    // 自分自身がそのグループの唯一のメンバーだった場合に「新規グループ」と誤認しないよう、
-    // 配列から抜く前(=自分もまだ検索対象に含まれる状態)でgroupOrderを確定する。
-    var nextGroupOrder = getGroupOrderForName(groupValue);
-    var item = bookmarks.splice(idx, 1)[0];
-    item.group = groupValue;
-    item.groupOrder = nextGroupOrder;
-    bookmarks.push(item);
-    bookmarks.forEach(function (x, i) { x.order = i; });
-    saveData(bookmarks);
-    render();
-  }
-
-  // draggedKey のグループを targetKey の直前(after=false)/直後(after=true)に移動し、
-  // 全グループの groupOrder を現在の並び順で振り直す(order の全件再採番と同じ方式)。
-  function moveGroupSection(draggedKey, targetKey, after) {
-    if (!draggedKey || draggedKey === targetKey || targetKey === UNGROUPED) return;
-    var names = getGroups();
-    var fromIdx = names.indexOf(draggedKey);
-    if (fromIdx === -1) return;
-    names.splice(fromIdx, 1);
-    var toIdx = names.indexOf(targetKey);
-    if (toIdx === -1) return;
-    if (after) toIdx += 1;
-    names.splice(toIdx, 0, draggedKey);
-    names.forEach(function (name, i) {
-      bookmarks.forEach(function (b) { if (b.group === name) b.groupOrder = i; });
+  // 検索語(小文字化済みの配列)の、語ごとの最初の一致箇所を <mark class="hit"> で囲んだ、HTMLエスケープ済みの文字列を返す。
+  // 正規表現は使わず indexOf で位置を求め、重なる箇所は1つにまとめて、前・一致・後を個別にエスケープする(特殊文字・HTMLを含む語でも壊れない)。
+  // 小文字化で文字数が変わる文字(İ など)を含む文字列は、位置がずれるため色付けしない。
+  function highlightText(text, tokens) {
+    var lower = text.toLowerCase();
+    if (lower.length !== text.length) return escapeHtml(text);
+    var ranges = [];
+    tokens.forEach(function (t) {
+      var i = lower.indexOf(t);
+      if (i !== -1) ranges.push([i, i + t.length]);
     });
-    saveData(bookmarks);
-    render();
+    ranges.sort(function (a, b) { return a[0] - b[0]; });
+    var merged = [];
+    ranges.forEach(function (r) {
+      var last = merged[merged.length - 1];
+      if (last && r[0] <= last[1]) last[1] = Math.max(last[1], r[1]); else merged.push(r);
+    });
+    var out = '';
+    var pos = 0;
+    merged.forEach(function (r) {
+      out += escapeHtml(text.slice(pos, r[0])) + '<mark class="hit">' + escapeHtml(text.slice(r[0], r[1])) + '</mark>';
+      pos = r[1];
+    });
+    return out + escapeHtml(text.slice(pos));
   }
 
-  // key を1つ上(direction=-1)または下(direction=1)へ、隣接するグループと入れ替える(矢印ボタン用)
-  function moveGroupStep(key, direction) {
-    var names = getGroups();
-    var idx = names.indexOf(key);
-    if (idx === -1) return;
-    var targetIdx = idx + direction;
-    if (targetIdx < 0 || targetIdx >= names.length) return;
-    moveGroupSection(key, names[targetIdx], direction > 0);
-  }
-
-  // 検索語(小文字・trim済み)の最初の一致箇所を <mark class="hit"> で囲んだ、HTMLエスケープ済みの文字列を返す。
-  // 正規表現は使わず indexOf で位置を求め、前・一致・後を個別にエスケープする(特殊文字・HTMLを含む語でも壊れない)。
-  function highlightText(text, query) {
-    var i = query ? text.toLowerCase().indexOf(query) : -1;
-    if (i === -1) return escapeHtml(text);
-    return escapeHtml(text.slice(0, i)) + '<mark class="hit">' + escapeHtml(text.slice(i, i + query.length)) + '</mark>' + escapeHtml(text.slice(i + query.length));
-  }
-
-  function renderCard(b) {
-    var query = state.search.trim().toLowerCase();
+  function renderCard(b, reorderable) {
+    var tokens = getSearchTokens();
     var iconHtml = resolveIconHtml(b);
-    var grip = '<span class="row-grip" aria-hidden="true">&#8942;&#8942;</span>';
+    var grip = reorderable ? '<span class="row-grip" aria-hidden="true">&#8942;&#8942;</span>' : '';
     var memoFilled = !!b.memo;
 
     var memoPreviewHtml = memoFilled
-      ? '<span class="row-memo-preview">' + highlightText(b.memo, query) + '</span>'
+      ? '<span class="row-memo-preview">' + highlightText(b.memo, tokens) + '</span>'
+      : '';
+
+    var tagsHtml = b.tags.length
+      ? '<div class="row-tags">' + b.tags.map(function (t) {
+          return '<button type="button" tabindex="-1" class="row-tag" data-action="filter-tag" data-tag="' + escapeHtml(tagKey(t)) + '" aria-label="タグ ' + escapeHtml(t) + ' で絞り込む">' + escapeHtml(t) + '</button>';
+        }).join('') + '</div>'
       : '';
 
     var indicatorsHtml = renderCredentialIndicators(b, ' tabindex="-1"');
@@ -1803,9 +1839,10 @@
         grip +
         '<div class="seal">' + iconHtml + '</div>' +
         '<div class="row-text">' +
-          '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + highlightText(b.title, query) + '</a></h3>' +
+          '<h3 class="card-title"><a href="' + escapeHtml(resolveOpenHref(b)) + '" target="_blank" rel="noopener noreferrer" tabindex="-1">' + highlightText(b.title, tokens) + '</a></h3>' +
           memoPreviewHtml +
         '</div>' +
+        tagsHtml +
         '<div class="card-footer"><div class="card-actions">' +
           indicatorsHtml +
           pathCopyHtml +
@@ -1824,7 +1861,7 @@
           '<form class="edit-form" data-edit-form>' +
             '<div class="field"><label for="edit-url">URL</label><input id="edit-url" type="text" name="url" value="' + escapeHtml(b.url) + '" required></div>' +
             '<div class="field"><label for="edit-title">タイトル</label><input id="edit-title" type="text" name="title" value="' + escapeHtml(b.title) + '" required></div>' +
-            '<div class="field"><label for="edit-group-text">グループ</label><p class="field-explain">グループ＝1つだけ選べる置き場所</p><div class="chip-list" id="edit-group-chips"></div><input id="edit-group-text" type="text" placeholder="新しいグループ名"></div>' +
+            '<div class="field"><label for="edit-tag-text">タグ(Enter かカンマで確定)</label><div class="chip-list" id="edit-tag-chips"></div><input id="edit-tag-text" type="text" placeholder="タグを入力" autocomplete="off"><div class="chip-list" id="edit-tag-suggest"></div></div>' +
             '<div class="field"><label for="edit-login-id">ログインID</label><input id="edit-login-id" type="text" name="loginId" value="' + escapeHtml(b.loginId || '') + '"></div>' +
             '<div class="field">' +
               '<label for="edit-login-password">パスワード</label>' +
@@ -1845,33 +1882,16 @@
     );
   }
 
-  var editFormSelectedGroup = null;
-
-  function refreshEditFormChipPickers() {
-    var groupChipsEl = document.getElementById('edit-group-chips');
-    var groupTextInput = document.getElementById('edit-group-text');
-    if (!groupChipsEl) return; // 編集フォームが閉じている間は対象要素が存在しない
-    renderGroupChipList(groupChipsEl, function () { return editFormSelectedGroup; }, function (val) {
-      editFormSelectedGroup = val;
-      if (val !== null) groupTextInput.value = '';
-      refreshEditFormChipPickers();
-    });
-  }
-
   function bindEditCardEvents(card, b) {
     var form = card.querySelector('[data-edit-form]');
     var cancelBtn = card.querySelector('[data-action="cancel-edit"]');
-    var groupTextInput = document.getElementById('edit-group-text');
-
-    editFormSelectedGroup = b.group || null;
-    refreshEditFormChipPickers();
-
-    groupTextInput.addEventListener('input', function () {
-      if (groupTextInput.value.trim() === '') return;
-      if (editFormSelectedGroup === null) return;
-      editFormSelectedGroup = null;
-      refreshEditFormChipPickers();
-    });
+    var picker = createTagPicker(
+      document.getElementById('edit-tag-chips'),
+      document.getElementById('edit-tag-suggest'),
+      document.getElementById('edit-tag-text'),
+      function () {}
+    );
+    picker.set(b.tags);
 
     cancelBtn.addEventListener('click', function () {
       state.editingId = null;
@@ -1886,16 +1906,12 @@
         alert('URLは http:// / https:// / file:/// のいずれかで始まる必要があります。');
         return;
       }
+      picker.commit(); // 入力欄に残っている未確定のタグも含める
       b.url = url;
       b.scheme = scheme;
       b.domain = deriveDomain(url, scheme);
       b.title = form.title.value.trim() || deriveTentativeTitle(url, scheme);
-      var groupTyped = groupTextInput.value.trim();
-      var newGroup = groupTyped || editFormSelectedGroup;
-      if (newGroup !== b.group) {
-        b.group = newGroup;
-        b.groupOrder = getGroupOrderForName(newGroup);
-      }
+      b.tags = picker.tags.slice();
       b.loginId = form.loginId.value.trim() || null;
       b.loginPassword = form.loginPassword.value || null;
       b.memo = form.memo.value.trim() ? form.memo.value : null;
@@ -1921,38 +1937,20 @@
   var addForm = document.getElementById('add-form');
   var newUrlInput = document.getElementById('new-url');
   var newTitleInput = document.getElementById('new-title');
-  var newGroupChipsEl = document.getElementById('new-group-chips');
-  var newGroupTextInput = document.getElementById('new-group-text');
-  var addFormSelectedGroup = null;
   var newMemoInput = document.getElementById('new-memo');
-  // チップの選択・グループ名の入力があれば true。以後は自動の事前選択で上書きしない。
-  var addFormGroupManual = false;
+  // タグを手で追加・外したら true。以後は自動の事前選択で上書きしない。
+  var addFormTagsManual = false;
+  var addTagPicker = createTagPicker(
+    document.getElementById('new-tag-chips'),
+    document.getElementById('new-tag-suggest'),
+    document.getElementById('new-tag-text'),
+    function () { addFormTagsManual = true; }
+  );
 
-  function refreshAddFormChipPickers() {
-    renderGroupChipList(newGroupChipsEl, function () { return addFormSelectedGroup; }, function (val) {
-      addFormGroupManual = true;
-      addFormSelectedGroup = val;
-      if (val !== null) newGroupTextInput.value = '';
-      refreshAddFormChipPickers();
-    });
-  }
-
-  // 新規グループ欄に文字を入力したら、既存チップの単一選択は自動解除する(グループは単一値であるという制約をUI上でも保つ)
-  newGroupTextInput.addEventListener('input', function () {
-    if (newGroupTextInput.value.trim() === '') return;
-    addFormGroupManual = true;
-    if (addFormSelectedGroup === null) return;
-    addFormSelectedGroup = null;
-    refreshAddFormChipPickers();
-  });
-
-  // URL・タイトル・メモの入力に合わせて、自動分類の行き先をグループのチップに事前選択して見せる
-  function previewAddFormGroup() {
-    if (addFormGroupManual) return;
-    var url = newUrlInput.value.trim();
-    var scheme = classifyUrl(url);
-    addFormSelectedGroup = scheme ? guessGroup(newTitleInput.value, url, newMemoInput.value, deriveDomain(url, scheme)) : null;
-    refreshAddFormChipPickers();
+  // URL・タイトル・メモの入力に合わせて、含まれる既存のタグ名をすべて事前選択して見せる
+  function previewAddFormTags() {
+    if (addFormTagsManual) return;
+    addTagPicker.set(guessTags(newTitleInput.value, newUrlInput.value.trim(), newMemoInput.value));
   }
 
   document.getElementById('toggle-add-btn').addEventListener('click', function () {
@@ -1968,7 +1966,7 @@
     newTitleInput.value = deriveTentativeTitle(newUrlInput.value.trim(), scheme);
   });
   [newUrlInput, newTitleInput, newMemoInput].forEach(function (el) {
-    el.addEventListener('input', previewAddFormGroup);
+    el.addEventListener('input', previewAddFormTags);
   });
 
   addForm.addEventListener('submit', function (e) {
@@ -1980,10 +1978,9 @@
       return;
     }
 
+    addTagPicker.commit(); // 入力欄に残っている未確定のタグも含める
     var title = newTitleInput.value.trim() || deriveTentativeTitle(url, scheme);
     var domain = deriveDomain(url, scheme);
-    var newGroupTyped = newGroupTextInput.value.trim();
-    var group = newGroupTyped || addFormSelectedGroup;
     var loginId = document.getElementById('new-login-id').value.trim() || null;
     var loginPassword = document.getElementById('new-login-password').value || null;
     var memo = document.getElementById('new-memo').value.trim() ? document.getElementById('new-memo').value : null;
@@ -1992,8 +1989,7 @@
       id: makeId(),
       url: url,
       title: title,
-      group: group,
-      groupOrder: getGroupOrderForName(group),
+      tags: addTagPicker.tags.slice(),
       loginId: loginId,
       loginPassword: loginPassword,
       memo: memo,
@@ -2003,32 +1999,29 @@
     });
 
     saveData(bookmarks);
-    state.openGroup = group || ''; // 追加先のグループを開いて見せる
     addForm.reset();
-    addFormSelectedGroup = null;
-    addFormGroupManual = false;
+    addTagPicker.set([]);
+    addTagPicker.showAll = false;
+    addFormTagsManual = false;
     addPanel.hidden = true;
     render();
   });
 
-  // 未分類のうち、自動分類の行き先が決まるものをまとめて移す。行き先は実行前のグループ構成で判定する。
-  document.getElementById('auto-group-btn').addEventListener('click', function () {
+  // タグなしのブックマークのうち、含まれる既存のタグ名があるものに、そのタグをまとめて付ける。タグ名は実行前のタグ一覧で判定する。
+  document.getElementById('auto-tag-btn').addEventListener('click', function () {
     var plan = [];
     bookmarks.forEach(function (b) {
-      if (b.group) return;
-      var g = guessGroup(b.title, b.url, b.memo, b.domain);
-      if (g !== null) plan.push({ bookmark: b, group: g });
+      if (b.tags.length) return;
+      var tags = guessTags(b.title, b.url, b.memo);
+      if (tags.length) plan.push({ bookmark: b, tags: tags });
     });
     if (plan.length === 0) {
-      alert('自動分類できる未分類のブックマークはありません。');
+      alert('自動でタグ付けできるタグなしのブックマークはありません。');
       return;
     }
-    var lines = plan.map(function (p) { return p.bookmark.title + ' → ' + p.group; });
-    if (!confirm(plan.length + ' 件を自動分類します。\n\n' + lines.join('\n') + '\n\nよろしいですか?')) return;
-    plan.forEach(function (p) {
-      p.bookmark.group = p.group;
-      p.bookmark.groupOrder = getGroupOrderForName(p.group);
-    });
+    var lines = plan.map(function (p) { return p.bookmark.title + ' → ' + p.tags.join('、'); });
+    if (!confirm(plan.length + ' 件を自動でタグ付けします。\n\n' + lines.join('\n') + '\n\nよろしいですか?')) return;
+    plan.forEach(function (p) { p.bookmark.tags = p.tags; });
     saveData(bookmarks);
     render();
   });
@@ -2053,7 +2046,6 @@
 
   searchInput.addEventListener('input', function (e) {
     state.search = e.target.value;
-    if (state.search.trim() !== '') state.openGroup = null; // 検索中は全幅区画で見せるので、ポップオーバーは閉じ、検索を消したあとも全部閉じた状態に戻す
     updateSearchClearVisibility();
     render();
   });
@@ -2065,7 +2057,7 @@
   /* ---------- エクスポート / インポート ---------- */
 
   document.getElementById('export-btn').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify(bookmarks, null, 2)], { type: 'application/json' });
+    var blob = new Blob([JSON.stringify({ version: 2, bookmarks: bookmarks, tagOrder: tagOrder }, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     var stamp = new Date().toISOString().slice(0, 10);
@@ -2095,22 +2087,27 @@
         alert('JSONの読み込みに失敗しました。ファイルの内容を確認してください。');
         return;
       }
-      if (!Array.isArray(parsed)) {
-        alert('インポートするJSONはブックマークの配列である必要があります。');
+      // 旧式(v1.x・初期の v2.0.0)のエクスポートはブックマークの配列。新式は { bookmarks, tagOrder } のオブジェクト
+      var list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.bookmarks) ? parsed.bookmarks : null);
+      if (!list) {
+        alert('インポートするJSONはブックマークの配列か、bookmarks を含むオブジェクトである必要があります。');
         return;
       }
+      var importedOrder = sanitizeTagOrder(Array.isArray(parsed) ? [] : parsed.tagOrder);
 
-      var sanitized = parsed.map(sanitizeBookmark).filter(Boolean);
+      var sanitized = list.map(sanitizeBookmark).filter(Boolean);
       sanitized.forEach(function (b, i) { b.order = i; });
-      if (sanitized.some(function (b) { return typeof b.groupOrder !== 'number'; })) assignGroupOrder(sanitized);
-      var skipped = parsed.length - sanitized.length;
+      unifyTagNames(sanitized);
+      var skipped = list.length - sanitized.length;
       var message = '現在のブックマーク(' + bookmarks.length + ' 件)を、インポートするデータ(' + sanitized.length + ' 件' +
         (skipped ? '、URL不正のため ' + skipped + ' 件は除外' : '') + ')で置き換えます。よろしいですか?';
       if (!confirm(message)) {
         return;
       }
       bookmarks = sanitized;
+      tagOrder = importedOrder;
       saveData(bookmarks);
+      saveTagOrder();
       state.editingId = null;
       render();
     };
@@ -2136,7 +2133,7 @@
     toggleHelp();
   });
 
-  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → グループ管理モーダル → 各種フォーム(編集・追加) → グループのポップオーバー。
+  // Escapeは「手前にあるもの」から1段階ずつ閉じる: ヘルプ → タグ管理モーダル → 各種フォーム(編集・追加)。
   // フォームは2種をまとめて1段階として扱う(同時に開いていても1回のEscapeで閉じ切る)。閉じる層が何も無ければ、最後にフォーカスを外す。
   function closeTopmostLayer() {
     if (!helpPanel.hidden) {
@@ -2144,14 +2141,15 @@
       return;
     }
 
-    // グループ管理モーダルが開いている場合、内側のリネームフォーム→モーダル本体の順に1段階ずつ閉じる
-    if (!groupManageOverlay.hidden) {
-      if (state.editingGroup !== null) {
-        state.editingGroup = null;
-        renderGroupManageModal();
+    // タグ管理モーダルが開いている場合、内側の改名・削除の確認→モーダル本体の順に1段階ずつ閉じる
+    if (!tagManageOverlay.hidden) {
+      if (state.editingTag !== null || state.confirmDeleteTag !== null) {
+        state.editingTag = null;
+        state.confirmDeleteTag = null;
+        renderTagManageModal();
         return;
       }
-      closeGroupManageModal();
+      closeTagManageModal();
       return;
     }
 
@@ -2163,17 +2161,9 @@
       render();
       // 編集フォームを閉じるとフォーカスが行き場を失うため、Tabの停止位置になっているカードへ戻す
       if (closedEditingCard) {
-        var target = document.querySelector('#group-sections .card[tabindex="0"]');
+        var target = document.querySelector('#bookmark-list .card[tabindex="0"]');
         if (target) target.focus();
       }
-      return;
-    }
-
-    if (state.openGroup !== null && state.search.trim() === '') {
-      var closedKey = state.openGroup;
-      closePopover();
-      var closedTile = document.querySelector('#group-sections .group-tile[data-group="' + CSS.escape(closedKey) + '"]');
-      if (closedTile) closedTile.focus();
       return;
     }
 
@@ -2195,9 +2185,9 @@
       case 'ArrowUp':
       case 'ArrowLeft':
         // 既にカードにフォーカス中なら、この関数では処理せずhandleCardShortcut側の移動処理に任せる
-        if (e.target.closest('#group-sections .card[tabindex]')) return false;
+        if (e.target.closest('#bookmark-list .card[tabindex]')) return false;
         e.preventDefault();
-        var arrowTarget = document.querySelector('#group-sections .card[tabindex="0"]');
+        var arrowTarget = document.querySelector('#bookmark-list .card[tabindex="0"]');
         if (arrowTarget) arrowTarget.focus();
         return true;
       case 'Home':
@@ -2218,20 +2208,14 @@
   function handleCardShortcut(e, card) {
     switch (e.key) {
       case 'ArrowRight':
-        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocusWithinGroup(card, 1);
-        return;
-      case 'ArrowLeft':
-        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocusWithinGroup(card, -1);
-        return;
       case 'ArrowDown':
         e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocusToGroup(card, 1);
+        moveCardFocus(card, 1);
         return;
+      case 'ArrowLeft':
       case 'ArrowUp':
         e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocusToGroup(card, -1);
+        moveCardFocus(card, -1);
         return;
       case 'Enter':
         e.preventDefault();
@@ -2246,7 +2230,7 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return; // ブラウザ標準のショートカットを妨げない
 
     if (e.key === 'Escape') {
-      if (e.target === searchInput && state.search && groupManageOverlay.hidden && helpPanel.hidden) {
+      if (e.target === searchInput && state.search && tagManageOverlay.hidden && helpPanel.hidden) {
         clearSearch();
         return;
       }
@@ -2254,13 +2238,13 @@
       return;
     }
 
-    if (!groupManageOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
+    if (!tagManageOverlay.hidden) return; // モーダル表示中はEscape以外のグローバルショートカットを無効化する
 
     if (isTextInputElement(e.target)) return;
 
     if (handleGlobalShortcut(e)) return;
 
-    var card = e.target.closest('#group-sections .card[tabindex]');
+    var card = e.target.closest('#bookmark-list .card[tabindex]');
     if (!card) return;
 
     handleCardShortcut(e, card);
@@ -2272,7 +2256,7 @@
   // ロービングの対象は tabindex 属性を持つカードのみ。編集フォームに差し替わったカード(renderEditCard)は
   // 属性を持たないため自動的に除外され、フォーム内inputへ自然にTab遷移できる。
   function getNavigableCards() {
-    return Array.prototype.slice.call(document.querySelectorAll('#group-sections .card[tabindex]'));
+    return Array.prototype.slice.call(document.querySelectorAll('#bookmark-list .card[tabindex]'));
   }
 
   // 再描画のたびにTabの停止位置(tabindex="0")を1枚だけに絞り直す。対象は直前までフォーカスしていたカード、
@@ -2289,37 +2273,19 @@
     return target;
   }
 
-  // 同じグループ区画内のカードのみを対象に、DOM順で前後移動する(区画をまたがない。端では何も起きない)。
+  // 一覧のカードを、DOM順で前後(direction=1/-1)へ移動する。端では何も起きない。
   // tabindexの張り替えとfocusedCardIdの更新はfocusinハンドラ側で行われる。
-  function moveCardFocusWithinGroup(card, direction) {
-    var section = card.closest('.group-section');
-    if (!section) return;
-    var cards = Array.prototype.slice.call(section.querySelectorAll('.card[tabindex]'));
+  function moveCardFocus(card, direction) {
+    var cards = getNavigableCards();
     var next = cards[cards.indexOf(card) + direction];
     if (next) next.focus();
-  }
-
-  // 表示中のグループ区画(表示順)を1つ進め/戻し、移動先区画の先頭カードへフォーカスする。
-  // 表示中カードが0件の区画はスキップし、最初/最後の区画では反対側の端へ循環する。
-  // カードを持つ区画が1つしかない場合は何も起きない。
-  function moveCardFocusToGroup(card, direction) {
-    var currentSection = card.closest('.group-section');
-    if (!currentSection) return;
-    var sections = Array.prototype.slice.call(document.querySelectorAll('#group-sections .group-section'))
-      .filter(function (s) { return s.querySelector('.card[tabindex]'); });
-    if (sections.length <= 1) return;
-    var idx = sections.indexOf(currentSection);
-    if (idx === -1) return;
-    var targetIdx = (idx + direction + sections.length) % sections.length;
-    var targetCard = sections[targetIdx].querySelector('.card[tabindex]');
-    if (targetCard) targetCard.focus();
   }
 
   // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える。
   // tabindexの張り替え自体はapplyRovingTabindex()に委譲する(focusedCardIdは直前にcardへ合わせて
   // いるため、applyRovingTabindex()は必ずこのcardを選び直し、同じ結果になる)。
-  document.getElementById('group-sections').addEventListener('focusin', function (e) {
-    var card = e.target.closest('#group-sections .card[tabindex]');
+  document.getElementById('bookmark-list').addEventListener('focusin', function (e) {
+    var card = e.target.closest('#bookmark-list .card[tabindex]');
     if (!card) return;
     focusedCardId = card.getAttribute('data-card-id');
     applyRovingTabindex();
