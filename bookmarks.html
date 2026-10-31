@@ -1378,7 +1378,7 @@
     return bookmarks.filter(function (b) {
       if (state.filterUntagged && b.tags.length !== 0) return false;
       if (state.filterTag !== null && !hasTag(b.tags, state.filterTag)) return false;
-      var hay = (b.title + ' ' + b.url + ' ' + (b.memo || '')).toLowerCase();
+      var hay = (b.title + ' ' + (b.memo || '') + ' ' + b.tags.join(' ')).toLowerCase();
       return tokens.every(function (t) { return hay.indexOf(t) !== -1; });
     });
   }
@@ -2030,7 +2030,7 @@
 
     var tagsHtml = b.tags.length
       ? '<div class="row-tags">' + b.tags.map(function (t) {
-          return '<button type="button" tabindex="-1" class="row-tag" data-action="filter-tag" data-tag="' + escapeHtml(tagKey(t)) + '" aria-label="タグ ' + escapeHtml(t) + ' で絞り込む">' + escapeHtml(t) + '</button>';
+          return '<button type="button" tabindex="-1" class="row-tag" data-action="filter-tag" data-tag="' + escapeHtml(tagKey(t)) + '" aria-label="タグ ' + escapeHtml(t) + ' で絞り込む">' + highlightText(t, tokens) + '</button>';
         }).join('') + '</div>'
       : '';
 
@@ -2075,7 +2075,7 @@
       '<dl>' +
         '<div><dt>URL</dt><dd class="mono">' + escapeHtml(b.url) + '</dd></div>' +
         (b.memo ? '<div><dt>メモ</dt><dd>' + highlightText(b.memo, tokens) + '</dd></div>' : '') +
-        (b.tags.length ? '<div><dt>タグ</dt><dd>' + b.tags.map(escapeHtml).join(' / ') + '</dd></div>' : '') +
+        (b.tags.length ? '<div><dt>タグ</dt><dd>' + b.tags.map(function (t) { return highlightText(t, tokens); }).join(' / ') + '</dd></div>' : '') +
         (b.loginId ? '<div><dt>ログインID</dt><dd class="mono">' + escapeHtml(b.loginId) + copyBtn('copy-login-id') + '</dd></div>' : '') +
         (b.loginPassword ? '<div><dt>パスワード</dt><dd class="mono">●●●●●●●●' + copyBtn('copy-login-password') + '</dd></div>' : '') +
         '<div><dt>直近14日に開いた回数</dt><dd>' + recentOpens(b, Date.now()).length + ' 回</dd></div>' +
