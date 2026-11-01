@@ -911,10 +911,6 @@
   <dl class="help-grid">
     <dt><kbd>/</kbd></dt><dd>検索ボックスへフォーカス</dd>
     <dt><kbd>Esc</kbd></dt><dd>検索欄にフォーカス中かつ入力中なら検索をクリア。それ以外はヘルプ &rarr; タグ管理 &rarr; フォームの順に閉じ、何も無ければフォーカスを外す</dd>
-    <dt><kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8592;</kbd> <kbd>&#8594;</kbd></dt><dd>カード間のフォーカス移動(未フォーカス時は一覧へ入る)</dd>
-    <dt><kbd>Home</kbd></dt><dd>一覧の先頭カードへフォーカス</dd>
-    <dt><kbd>End</kbd></dt><dd>一覧の末尾カードへフォーカス</dd>
-    <dt><kbd>Enter</kbd></dt><dd>フォーカス中のカードのURLを開く</dd>
   </dl>
 </section>
 
@@ -1628,10 +1624,6 @@
 
   function renderList() {
     var container = document.getElementById('bookmark-list');
-    // render()でDOMを作り直すとフォーカスが失われるため、カード自身にフォーカスがあった場合だけ復元する。
-    // カード内のボタンにフォーカスがある場合(編集ボタンのクリック等)は、その後の遷移を妨げないよう復元しない。
-    var active = document.activeElement;
-    var hadCardFocus = !!(active && active.classList && active.classList.contains('card') && container.contains(active));
     var items = sortItems(getFiltered());
     var reorderable = canReorder();
 
@@ -1707,12 +1699,6 @@
 
       if (reorderable) bindDragEvents(card, b, group);
     });
-
-    var rovingTarget = applyRovingTabindex();
-    // 編集モードに入る際は、直後にeハンドラが編集フォームへ明示的にフォーカスを移すため、
-    // ここでのロービングフォーカス復元を発火させない(発火するとfocusinがfocusedCardIdを
-    // 編集中カード以外の値へ上書きしてしまう)。
-    if (hadCardFocus && rovingTarget && state.editingId === null) rovingTarget.focus();
   }
 
   /* ---------- タグ管理モーダル ---------- */
@@ -2576,76 +2562,17 @@
       return;
     }
 
-    var closedEditingCard = state.editingId !== null;
     var closedForm = false;
     if (state.editingId !== null) { state.editingId = null; closedForm = true; }
     if (!addPanel.hidden) { addPanel.hidden = true; closedForm = true; }
     if (closedForm) {
       render();
-      // 編集フォームを閉じるとフォーカスが行き場を失うため、Tabの停止位置になっているカードへ戻す
-      if (closedEditingCard) {
-        var target = document.querySelector('#bookmark-list .card[tabindex="0"]');
-        if (target) target.focus();
-      }
       return;
     }
 
     // 閉じる層が何も無い場合、フォーカスを完全に外して初期状態に戻す
     if (document.activeElement !== document.body) {
       document.activeElement.blur();
-    }
-  }
-
-  // カードに依存しないグローバルショートカット。マッチしてハンドリングした場合はtrueを返す。
-  function handleGlobalShortcut(e) {
-    switch (e.key) {
-      case '/':
-        e.preventDefault(); // フォーカス移動後に '/' が入力されてしまうのを防ぐ
-        document.getElementById('search-input').focus();
-        return true;
-      case 'ArrowDown':
-      case 'ArrowRight':
-      case 'ArrowUp':
-      case 'ArrowLeft':
-        // 既にカードにフォーカス中なら、この関数では処理せずhandleCardShortcut側の移動処理に任せる
-        if (e.target.closest('#bookmark-list .card[tabindex]')) return false;
-        e.preventDefault();
-        var arrowTarget = document.querySelector('#bookmark-list .card[tabindex="0"]');
-        if (arrowTarget) arrowTarget.focus();
-        return true;
-      case 'Home':
-        e.preventDefault();
-        var firstCard = getNavigableCards()[0];
-        if (firstCard) firstCard.focus();
-        return true;
-      case 'End':
-        e.preventDefault();
-        var navCards = getNavigableCards();
-        if (navCards.length) navCards[navCards.length - 1].focus();
-        return true;
-    }
-    return false;
-  }
-
-  // フォーカス中のカードに対するショートカット。
-  function handleCardShortcut(e, card) {
-    switch (e.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
-        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocus(card, 1);
-        return;
-      case 'ArrowLeft':
-      case 'ArrowUp':
-        e.preventDefault(); // 一覧内の移動中にページがスクロールしないようにする
-        moveCardFocus(card, -1);
-        return;
-      case 'Enter':
-        e.preventDefault();
-        // クリック時と完全に同じ経路(target=_blank rel=noopener)で開くため、既存のリンクを踏む
-        var link = card.querySelector('.card-title a');
-        if (link) link.click();
-        return;
     }
   }
 
@@ -2665,59 +2592,10 @@
 
     if (isTextInputElement(e.target)) return;
 
-    if (handleGlobalShortcut(e)) return;
-
-    var card = e.target.closest('#bookmark-list .card[tabindex]');
-    if (!card) return;
-
-    handleCardShortcut(e, card);
-  });
-
-  // キーボード操作でフォーカス中のカードID。render()がDOMを作り直すため、stateではなくここで一時保持する。
-  var focusedCardId = null;
-
-  // カードの識別子。タグごとの表示では同じブックマークの行が複数の区画に出るため、ID に区画のキーを添える
-  function cardKey(card) {
-    var section = card.closest('.tag-group');
-    return card.getAttribute('data-card-id') + '\u0001' + (section ? section.getAttribute('data-group') : '');
-  }
-
-  // ロービングの対象は tabindex 属性を持つカードのみ。編集フォームに差し替わったカード(renderEditCard)は
-  // 属性を持たないため自動的に除外され、フォーム内inputへ自然にTab遷移できる。
-  function getNavigableCards() {
-    return Array.prototype.slice.call(document.querySelectorAll('#bookmark-list .card[tabindex]'));
-  }
-
-  // 再描画のたびにTabの停止位置(tabindex="0")を1枚だけに絞り直す。対象は直前までフォーカスしていたカード、
-  // それが検索・フィルタ・削除で消えている場合と未フォーカスの場合は表示中の先頭カード。
-  function applyRovingTabindex() {
-    var cards = getNavigableCards();
-    if (!cards.length) return null; // 表示中カードが0件のときはどのカードにもtabindex="0"を置かない
-    var target = null;
-    if (focusedCardId !== null) {
-      target = cards.filter(function (c) { return cardKey(c) === focusedCardId; })[0] || null;
+    if (e.key === '/') {
+      e.preventDefault(); // フォーカス移動後に '/' が入力されてしまうのを防ぐ
+      searchInput.focus();
     }
-    if (!target) target = cards[0];
-    cards.forEach(function (c) { c.setAttribute('tabindex', c === target ? '0' : '-1'); });
-    return target;
-  }
-
-  // 一覧のカードを、DOM順で前後(direction=1/-1)へ移動する。端では何も起きない。
-  // tabindexの張り替えとfocusedCardIdの更新はfocusinハンドラ側で行われる。
-  function moveCardFocus(card, direction) {
-    var cards = getNavigableCards();
-    var next = cards[cards.indexOf(card) + direction];
-    if (next) next.focus();
-  }
-
-  // クリック・Tab・矢印キーのいずれの経路でカードがフォーカスされてもIDを覚え、Tabの停止位置も張り替える。
-  // tabindexの張り替え自体はapplyRovingTabindex()に委譲する(focusedCardIdは直前にcardへ合わせて
-  // いるため、applyRovingTabindex()は必ずこのcardを選び直し、同じ結果になる)。
-  document.getElementById('bookmark-list').addEventListener('focusin', function (e) {
-    var card = e.target.closest('#bookmark-list .card[tabindex]');
-    if (!card) return;
-    focusedCardId = cardKey(card);
-    applyRovingTabindex();
   });
 
   // app-headerがflex-wrapで2段組みになる幅変化はrender()を経由しないため、resize時にも同期する
