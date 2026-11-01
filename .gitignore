@@ -1,5 +1,6 @@
 .worktrees/
 .superpowers/
+superpowers/
 docs/*
 !docs/images/
 grill-specs/
