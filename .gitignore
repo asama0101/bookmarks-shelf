@@ -1,5 +1,6 @@
 .worktrees/
 .superpowers/
-docs/
+docs/*
+!docs/images/
 grill-specs/
 CLAUDE.md
