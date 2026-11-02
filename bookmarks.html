@@ -472,6 +472,9 @@
     background: rgba(27, 53, 56, 0.03);
   }
   .tag-manage-row .btn-quiet, .tag-manage-row .btn-danger { padding: 3px 10px; font-size: 0.75rem; }
+  .tag-manage-row.dragging { opacity: 0.5; }
+  .tag-manage-row.drop-before { box-shadow: 0 -3px 0 var(--amber); }
+  .tag-manage-row.drop-after { box-shadow: 0 3px 0 var(--amber); }
 
   .tag-manage-name {
     flex: 1 1 auto;
@@ -649,6 +652,10 @@
   .tag-suggest { max-height: 7.5em; overflow-y: auto; }
   .chip.tag-chip { color: var(--ink); border: 1px solid var(--sage); }
   .chip.tag-chip.active { background: var(--sage); color: var(--ink); }
+  .chip.tag-chip.main::before { content: "メイン"; font-size: 0.65rem; margin-right: 4px; padding: 0 4px; border-radius: 3px; background: var(--amber); color: var(--ink); }
+  .chip.tag-chip.dragging { opacity: 0.5; }
+  .chip.tag-chip.drop-before { box-shadow: -3px 0 0 var(--amber); }
+  .chip.tag-chip.drop-after { box-shadow: 3px 0 0 var(--amber); }
 
   .card-footer {
     display: flex;
@@ -939,7 +946,7 @@
 </div>
 
 <footer class="data-controls">
-  <span>bookmark-shelf v2.2.0</span>
+  <span>bookmark-shelf v2.3.0</span>
   <span>データはこの端末のブラウザ内(localStorage)に保存されます。</span>
 </footer>
 
@@ -1087,6 +1094,16 @@
 
   function saveTagOrder() {
     localStorage.setItem(TAG_ORDER_KEY, JSON.stringify(tagOrder));
+  }
+
+  // 「タグごと」表示の区画の順(タグのキーの配列)。タグのタイルの並び(tagOrder)とは別で、タグ管理で決める。無ければ空
+  var GROUP_ORDER_KEY = 'bookmarks_group_order';
+  var groupOrder = (function () {
+    try { return sanitizeTagOrder(JSON.parse(localStorage.getItem(GROUP_ORDER_KEY))); } catch (e) { return []; }
+  })();
+
+  function saveGroupOrder() {
+    localStorage.setItem(GROUP_ORDER_KEY, JSON.stringify(groupOrder));
   }
 
   function makeId() {
@@ -1313,7 +1330,19 @@
     });
   }
 
-  // 使われなくなったタグ(削除・編集などで消えたもの)を並びから外す。変わったときだけ保存する
+  // 「タグごと」表示とタグ管理の一覧でのタグの順。区画の順(groupOrder)にあるものを先に、残りはタイルと同じ順
+  function getGroupTags() {
+    return getTags().map(function (t, i) { return { t: t, i: i }; }).sort(function (a, b) {
+      var ia = groupOrder.indexOf(a.t.key);
+      var ib = groupOrder.indexOf(b.t.key);
+      if (ia !== -1 && ib !== -1) return ia - ib;
+      if (ia !== -1) return -1;
+      if (ib !== -1) return 1;
+      return a.i - b.i;
+    }).map(function (x) { return x.t; });
+  }
+
+  // 使われなくなったタグ(削除・編集などで消えたもの)をタイルの並びと区画の順から外す。変わったときだけ保存する
   function pruneTagOrder() {
     var used = Object.create(null);
     bookmarks.forEach(function (b) { b.tags.forEach(function (t) { used[tagKey(t)] = true; }); });
@@ -1321,6 +1350,11 @@
     if (kept.length !== tagOrder.length) {
       tagOrder = kept;
       saveTagOrder();
+    }
+    var keptGroups = groupOrder.filter(function (k) { return used[k]; });
+    if (keptGroups.length !== groupOrder.length) {
+      groupOrder = keptGroups;
+      saveGroupOrder();
     }
   }
 
@@ -1414,11 +1448,37 @@
   // onManual は、ユーザーが手でタグを追加・外したときに呼ばれる(追加フォームの自動タグ付けを止めるため)。
   function createTagPicker(chipsEl, suggestEl, textEl, onManual) {
     var picker = { tags: [], showAll: false };
+    var draggedChipKey = null; // ドラッグ中のチップのタグのキー
+
+    // draggedKey のタグを、targetKey のタグの直前(after=false)または直後(after=true)へ移す。先頭のタグがメインになる
+    function moveChip(draggedKey, targetKey, after) {
+      var keys = picker.tags.map(tagKey);
+      var tag = picker.tags[keys.indexOf(draggedKey)];
+      var rest = picker.tags.filter(function (t) { return tagKey(t) !== draggedKey; });
+      rest.splice(rest.map(tagKey).indexOf(targetKey) + (after ? 1 : 0), 0, tag);
+      picker.tags = rest;
+      onManual();
+      refresh();
+    }
 
     function refresh() {
-      chipsEl.innerHTML = picker.tags.map(function (t) {
-        return '<button type="button" class="chip tag-chip active" data-action="remove-tag" data-name="' + escapeHtml(t) + '" aria-label="' + escapeHtml(t) + 'を外す">' + escapeHtml(t) + ' &times;</button>';
+      chipsEl.innerHTML = picker.tags.map(function (t, i) {
+        return '<button type="button" class="chip tag-chip active' + (i === 0 ? ' main' : '') + '" draggable="true" data-action="remove-tag" data-name="' + escapeHtml(t) + '" aria-label="' + escapeHtml(t) + 'を外す">' + escapeHtml(t) + ' &times;</button>';
       }).join('');
+      Array.prototype.forEach.call(chipsEl.querySelectorAll('.tag-chip'), function (chip) {
+        bindDragReorder(chip, tagKey(chip.getAttribute('data-name')), {
+          getDragged: function () { return draggedChipKey; },
+          setDragged: function (v) { draggedChipKey = v; },
+          dropEffect: 'move',
+          horizontal: true,
+          onDrop: moveChip
+        });
+        // 入力欄へドロップしたとき、タグのキーが文字として入らないよう、テキスト以外の型で渡す(bindDragReorder の dragstart の後に実行する)
+        chip.addEventListener('dragstart', function (e) {
+          e.dataTransfer.clearData();
+          e.dataTransfer.setData('application/x-tag-chip', draggedChipKey);
+        });
+      });
       var typed = textEl.value.trim().toLowerCase();
       var list = getTags().filter(function (t) {
         return !hasTag(picker.tags, t.name) && (!typed || t.key.indexOf(typed) !== -1);
@@ -1608,13 +1668,13 @@
     return getSearchTokens().length === 0;
   }
 
-  // タグごとの区画。区画の順はタグのタイルと同じで、複数のタグが付いた行は各タグの区画に出す。タグなしは最後。
-  // タグで絞り込み中は、そのタグの区画だけになる(表示中の行はすべてそのタグを持つため)。
+  // タグごとの区画。区画の順はタグ管理で決めた順(getGroupTags)。各行は、先頭のタグ(メイン)の区画にだけ出す。タグなしは最後。
+  // タグで絞り込み中は、そのタグの区画だけになり、表示中の行はすべて(メインでなくても)そこに出る。
   function groupItems(items) {
     var groups = [];
-    getTags().forEach(function (t) {
+    getGroupTags().forEach(function (t) {
       if (state.filterTag !== null && t.key !== state.filterTag) return;
-      var members = items.filter(function (b) { return hasTag(b.tags, t.name); });
+      var members = state.filterTag !== null ? items : items.filter(function (b) { return b.tags.length && tagKey(b.tags[0]) === t.key; });
       if (members.length) groups.push({ key: t.key, name: t.name, items: members });
     });
     var untagged = items.filter(function (b) { return b.tags.length === 0; });
@@ -1635,14 +1695,8 @@
       btn.setAttribute('aria-pressed', String(btn.getAttribute('data-view') === state.viewMode));
     });
 
-    // 編集フォームは1つだけ(タグごとの表示で同じ行が複数の区画に出ても、最初の1か所にだけ出す)
-    var editShown = false;
     function rowHtml(b) {
-      if (b.id === state.editingId && !editShown) {
-        editShown = true;
-        return renderEditCard(b);
-      }
-      return renderCard(b, reorderable);
+      return b.id === state.editingId ? renderEditCard(b) : renderCard(b, reorderable);
     }
     var groups = state.viewMode === 'grouped' ? groupItems(items) : null;
 
@@ -1658,7 +1712,7 @@
         ? '<div class="search-no-results">条件に一致するブックマークがありません。タグの選択か検索をクリアしてください。</div>'
         : '<div class="search-no-results">ブックマークがありません。「+ 追加」から登録してください。</div>';
 
-    // カード内イベントの割り当て(描画された行ごと。タグごとの表示では、同じブックマークの行が複数ある)
+    // カード内イベントの割り当て(描画された行ごと)
     var byId = Object.create(null);
     bookmarks.forEach(function (x) { byId[x.id] = x; });
     Array.prototype.forEach.call(container.querySelectorAll('.card[data-card-id]'), function (card) {
@@ -1733,12 +1787,20 @@
 
   // タグ管理モーダルのリスト全体を再描画する。render()から、モーダルが開いている間だけ呼ばれる。
   function renderTagManageModal() {
-    var tags = getTags();
+    var tags = getGroupTags();
     tagManageEmpty.hidden = tags.length !== 0;
-    tagManageList.innerHTML = tags.map(renderTagManageRow).join('');
+    tagManageList.innerHTML = tags.map(function (t, i) { return renderTagManageRow(t, i, tags.length); }).join('');
+    Array.prototype.forEach.call(tagManageList.querySelectorAll('.tag-manage-row[draggable]'), function (row) {
+      bindDragReorder(row, row.getAttribute('data-tag'), {
+        getDragged: function () { return draggedGroupTagKey; },
+        setDragged: function (v) { draggedGroupTagKey = v; },
+        dropEffect: 'move',
+        onDrop: moveGroupTag
+      });
+    });
   }
 
-  function renderTagManageRow(t) {
+  function renderTagManageRow(t, index, total) {
     var key = escapeHtml(t.key);
     var name = escapeHtml(t.name);
     if (state.confirmRename === t.key) return renderRenameConfirmRow(t);
@@ -1756,9 +1818,12 @@
         '<button type="button" class="btn-quiet" data-action="cancel-tag-edit">キャンセル</button>'
       : '<button type="button" class="btn-quiet" data-action="edit-tag" data-tag="' + key + '" aria-label="' + name + 'の名前を変更">改名</button>' +
         '<button type="button" class="btn-danger" data-action="delete-tag" data-tag="' + key + '" aria-label="' + name + 'を削除">削除</button>';
-    return '<li class="tag-manage-row" data-tag="' + key + '">' +
+    return '<li class="tag-manage-row" data-tag="' + key + '" draggable="true">' +
+      '<span class="row-grip" aria-hidden="true">⠿</span>' +
       '<span class="tag-manage-name">' + name + '</span>' +
       '<span class="tag-manage-count">' + t.count + '</span>' +
+      '<button type="button" class="btn-quiet" data-action="move-tag-up" data-tag="' + key + '" aria-label="' + name + 'を上へ"' + (index === 0 ? ' disabled' : '') + '>▲</button>' +
+      '<button type="button" class="btn-quiet" data-action="move-tag-down" data-tag="' + key + '" aria-label="' + name + 'を下へ"' + (index === total - 1 ? ' disabled' : '') + '>▼</button>' +
       buttons +
     '</li>';
   }
@@ -1810,6 +1875,14 @@
     } else if (action === 'confirm-delete-tag') {
       deleteTag(key);
       return;
+    } else if (action === 'move-tag-up' || action === 'move-tag-down') {
+      shiftGroupTag(key, action === 'move-tag-up' ? -1 : 1);
+      // 再描画でボタンが替わるため、同じボタンへフォーカスを戻す(端で無効になったら反対側へ)
+      var row = Array.prototype.filter.call(tagManageList.querySelectorAll('.tag-manage-row'), function (r) { return r.getAttribute('data-tag') === key; })[0];
+      var same = row && row.querySelector('[data-action="' + action + '"]');
+      var other = row && row.querySelector('[data-action="' + (action === 'move-tag-up' ? 'move-tag-down' : 'move-tag-up') + '"]');
+      if (same && !same.disabled) same.focus(); else if (other) other.focus();
+      return;
     } else {
       return;
     }
@@ -1860,6 +1933,8 @@
     if (state.filterTag === oldKey) state.filterTag = newKey; // 絞り込みは新しい名前へ引き継ぐ
     tagOrder = sanitizeTagOrder(tagOrder.map(function (k) { return k === oldKey ? newKey : k; })); // 並びは新しい名前へ引き継ぐ(統合で重なったら先の位置)
     saveTagOrder();
+    groupOrder = sanitizeTagOrder(groupOrder.map(function (k) { return k === oldKey ? newKey : k; })); // 区画の順も同じく引き継ぐ
+    saveGroupOrder();
     var formTags = [];
     addTagPicker.tags.forEach(function (t) { addTagTo(formTags, tagKey(t) === oldKey ? finalName : t); });
     addTagPicker.tags = formTags;
@@ -1928,6 +2003,7 @@
   var draggedCardId = null;
   var draggedGroup = null; // ドラッグ中の行がある区画のキー(タグごとの表示のとき。通常の並びでは null)
   var draggedTagKey = null;
+  var draggedGroupTagKey = null; // タグ管理でドラッグ中のタグのキー
 
   // id のブックマークに、key のタグを付ける。すでに付いていれば何もしない。
   function addTagToBookmark(id, key) {
@@ -1948,6 +2024,25 @@
     tagOrder = keys;
     saveTagOrder();
     render();
+  }
+
+  // targetKey のタグの直前(after=false)または直後(after=true)に draggedKey のタグを移動する。いまの区画の順を、そのまま保存する。
+  function moveGroupTag(draggedKey, targetKey, after) {
+    var keys = getGroupTags().map(function (t) { return t.key; });
+    if (draggedKey === targetKey || keys.indexOf(draggedKey) === -1 || keys.indexOf(targetKey) === -1) return;
+    keys.splice(keys.indexOf(draggedKey), 1);
+    keys.splice(keys.indexOf(targetKey) + (after ? 1 : 0), 0, draggedKey);
+    groupOrder = keys;
+    saveGroupOrder();
+    render();
+  }
+
+  // key のタグを区画の順で delta(-1 で上、1 で下)だけ動かす。端なら何もしない。
+  function shiftGroupTag(key, delta) {
+    var keys = getGroupTags().map(function (t) { return t.key; });
+    var j = keys.indexOf(key) + delta;
+    if (j < 0 || j >= keys.length) return;
+    moveGroupTag(key, keys[j], delta > 0);
   }
 
   // group は、タグごとの表示での区画のキー(タグなしは '')。その区画の中だけで並べ替えられる。通常の並びでは null。
@@ -2443,7 +2538,13 @@
   }
 
   searchInput.addEventListener('input', function (e) {
+    // 検索を始めたとき(検索語なし → あり)は、タグの絞り込みを外して全件を検索対象にする
+    var searching = getSearchTokens().length > 0;
     state.search = e.target.value;
+    if (!searching && getSearchTokens().length > 0) {
+      state.filterTag = null;
+      state.filterUntagged = false;
+    }
     updateSearchClearVisibility();
     render();
   });
@@ -2455,7 +2556,7 @@
   /* ---------- エクスポート / インポート ---------- */
 
   document.getElementById('export-btn').addEventListener('click', function () {
-    var blob = new Blob([JSON.stringify({ version: 2, bookmarks: bookmarks, tagOrder: tagOrder }, null, 2)], { type: 'application/json' });
+    var blob = new Blob([JSON.stringify({ version: 2, bookmarks: bookmarks, tagOrder: tagOrder, groupOrder: groupOrder }, null, 2)], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     var stamp = new Date().toISOString().slice(0, 10);
@@ -2485,13 +2586,14 @@
         alert('JSONの読み込みに失敗しました。ファイルの内容を確認してください。');
         return;
       }
-      // 旧式(v1.x・初期の v2.0.0)のエクスポートはブックマークの配列。新式は { bookmarks, tagOrder } のオブジェクト
+      // 旧式(v1.x・初期の v2.0.0)のエクスポートはブックマークの配列。新式は { bookmarks, tagOrder, groupOrder } のオブジェクト
       var list = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.bookmarks) ? parsed.bookmarks : null);
       if (!list) {
         alert('インポートするJSONはブックマークの配列か、bookmarks を含むオブジェクトである必要があります。');
         return;
       }
       var importedOrder = sanitizeTagOrder(Array.isArray(parsed) ? [] : parsed.tagOrder);
+      var importedGroupOrder = sanitizeTagOrder(Array.isArray(parsed) ? [] : parsed.groupOrder);
 
       var sanitized = list.map(sanitizeBookmark).filter(Boolean);
       sanitized.forEach(function (b, i) { b.order = i; });
@@ -2504,8 +2606,10 @@
       }
       bookmarks = sanitized;
       tagOrder = importedOrder;
+      groupOrder = importedGroupOrder;
       saveData(bookmarks);
       saveTagOrder();
+      saveGroupOrder();
       state.editingId = null;
       render();
     };
