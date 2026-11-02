@@ -764,17 +764,6 @@
     background: var(--ivory);
   }
   .list-toolbar .result-count { margin: 0; }
-  .view-toggle { display: flex; }
-  .view-toggle-btn {
-    font-size: 0.78rem;
-    padding: 3px 12px;
-    border: 1px solid var(--sage);
-    background: var(--card);
-    color: var(--ink);
-  }
-  .view-toggle-btn:first-child { border-radius: 999px 0 0 999px; }
-  .view-toggle-btn:last-child { border-radius: 0 999px 999px 0; border-left: 0; }
-  .view-toggle-btn[aria-pressed="true"] { background: var(--ink); color: var(--ivory); border-color: var(--ink); }
 
   .tag-group + .tag-group { margin-top: 14px; }
   .tag-group-head {
@@ -935,10 +924,6 @@
   <main class="main">
     <div class="list-toolbar">
       <p class="result-count" id="result-count"></p>
-      <div class="view-toggle" role="group" aria-label="並び順">
-        <button type="button" class="view-toggle-btn" data-view="flat" aria-pressed="true">現在の並び</button>
-        <button type="button" class="view-toggle-btn" data-view="grouped" aria-pressed="false">タグごと</button>
-      </div>
     </div>
     <section class="list-section"><div class="list-grid" id="bookmark-list"></div></section>
   </main>
@@ -1077,20 +1062,6 @@
   }
 
   var tagOrder = loadTagOrder();
-
-  // 一覧の見せ方: 'flat'(現在の並び)か 'grouped'(タグごと)。不正な値・読めないときは 'flat'
-  var VIEW_MODE_KEY = 'bookmarks_view_mode';
-  state.viewMode = (function () {
-    try { return localStorage.getItem(VIEW_MODE_KEY) === 'grouped' ? 'grouped' : 'flat'; } catch (e) { return 'flat'; }
-  })();
-
-  document.querySelector('.view-toggle').addEventListener('click', function (e) {
-    var btn = e.target.closest('.view-toggle-btn');
-    if (!btn) return;
-    state.viewMode = btn.getAttribute('data-view') === 'grouped' ? 'grouped' : 'flat';
-    try { localStorage.setItem(VIEW_MODE_KEY, state.viewMode); } catch (err) { /* 保存できなくても、このセッションでは切り替わる */ }
-    render();
-  });
 
   function saveTagOrder() {
     localStorage.setItem(TAG_ORDER_KEY, JSON.stringify(tagOrder));
@@ -1689,25 +1660,18 @@
 
     document.getElementById('result-count').textContent =
       items.length + ' 件表示中(全 ' + bookmarks.length + ' 件)' +
-      (reorderable && items.length ? (state.viewMode === 'grouped' ? ' — 同じ区画の中でドラッグして並べ替え' : ' — ドラッグで並べ替え') : '');
-
-    Array.prototype.forEach.call(document.querySelectorAll('.view-toggle-btn'), function (btn) {
-      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-view') === state.viewMode));
-    });
+      (reorderable && items.length ? ' — 同じ区画の中でドラッグして並べ替え' : '');
 
     function rowHtml(b) {
       return b.id === state.editingId ? renderEditCard(b) : renderCard(b, reorderable);
     }
-    var groups = state.viewMode === 'grouped' ? groupItems(items) : null;
 
     container.innerHTML = items.length
-      ? (groups
-          ? groups.map(function (g) {
-              return '<section class="tag-group" data-group="' + escapeHtml(g.key) + '">' +
-                '<h3 class="tag-group-head">' + escapeHtml(g.name) + '<span class="tag-group-count">' + g.items.length + '</span></h3>' +
-                g.items.map(rowHtml).join('') + '</section>';
-            }).join('')
-          : items.map(rowHtml).join(''))
+      ? groupItems(items).map(function (g) {
+          return '<section class="tag-group" data-group="' + escapeHtml(g.key) + '">' +
+            '<h3 class="tag-group-head">' + escapeHtml(g.name) + '<span class="tag-group-count">' + g.items.length + '</span></h3>' +
+            g.items.map(rowHtml).join('') + '</section>';
+        }).join('')
       : bookmarks.length
         ? '<div class="search-no-results">条件に一致するブックマークがありません。タグの選択か検索をクリアしてください。</div>'
         : '<div class="search-no-results">ブックマークがありません。「+ 追加」から登録してください。</div>';
@@ -2001,7 +1965,7 @@
   /* ---------- ドラッグ&ドロップ(並べ替え) ---------- */
 
   var draggedCardId = null;
-  var draggedGroup = null; // ドラッグ中の行がある区画のキー(タグごとの表示のとき。通常の並びでは null)
+  var draggedGroup = null; // ドラッグ中の行がある区画のキー
   var draggedTagKey = null;
   var draggedGroupTagKey = null; // タグ管理でドラッグ中のタグのキー
 
@@ -2045,7 +2009,7 @@
     moveGroupTag(key, keys[j], delta > 0);
   }
 
-  // group は、タグごとの表示での区画のキー(タグなしは '')。その区画の中だけで並べ替えられる。通常の並びでは null。
+  // group は、タグごとの表示での区画のキー(タグなしは '')。その区画の中だけで並べ替えられる。
   function bindDragEvents(card, b, group) {
     card.setAttribute('draggable', 'true');
     bindDragReorder(card, b.id, {
